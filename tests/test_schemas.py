@@ -99,3 +99,15 @@ def test_shipment_rejects_bad_footprint_and_nonpositive_dims():
         Shipment(shipment_id="S", retailer="r", ship_date="2026-01-01", carrier="c", destination_dc="d",
                  cartons=[{"carton_id": "C", "length_in": 0, "width_in": 1, "height_in": 1,
                            "weight_lbs": 1, "sscc_present": True}])
+
+
+def test_exists_operator():
+    p = Parameter(name="ASN sent", target="shipment.asn_sent_at", operator="exists", value=True)
+    assert p.value is True
+    with pytest.raises(ValidationError, match="boolean"):
+        Parameter(name="ASN sent", target="shipment.asn_sent_at", operator="exists", value="yes")
+
+
+def test_lte_rejects_bool():
+    with pytest.raises(ValidationError, match="numeric"):
+        Parameter(name="p", target="cartons[].weight_lbs", operator="lte", value=True)

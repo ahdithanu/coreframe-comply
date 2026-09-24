@@ -1,0 +1,29 @@
+# {{ rs.retailer | title }} routing guide {{ rs.guide_version }}: compliance checklist
+
+{{ stats.total }} rules: {{ stats.parameterized }} auto-checkable, **{{ stats.needs_human }} need human review**, {{ stats.with_chargeback }} with a stated chargeback.
+Citations: {{ stats.verified }}/{{ stats.citations }} snippets verified on the cited page{% if stats.unverified %}, **{{ stats.unverified }} not found**{% endif %}{% if stats.image_only %}, {{ stats.image_only }} on image-only pages (not verifiable){% endif %}.
+
+Extracted by `{{ rs.model }}` with prompt `{{ rs.prompt_version }}` on {{ rs.extracted_at.strftime("%Y-%m-%d") }}. Guide SHA-256 `{{ rs.guide_sha256[:12] }}`.
+
+{% for g in groups %}
+## {{ g.label }}
+
+{% for r in g.rules %}
+- [ ] **{{ r.requirement }}**{% if r.status.value == "needs_human" %} ⚠ _needs human review_{% endif %}
+
+  `{{ r.rule_id }}` · confidence {{ r.confidence.value }} · applies to {{ r | applies }}
+{% for p in r.parameters %}
+  - check: `{{ p | param }}`
+{% endfor %}
+{% if r.chargeback %}
+  - chargeback: {{ r.chargeback.text }}
+{% endif %}
+{% if r.review_note %}
+  - review: {{ r.review_note }}
+{% endif %}
+{% for s in r.sources %}
+  - source: p. {{ s.page }}, {{ s.section }}: "{{ s.snippet }}"{% if s.verified is false %} ✗ snippet not found on page{% elif s.verified is none %} (image page){% endif %}
+
+{% endfor %}
+{% endfor %}
+{% endfor %}

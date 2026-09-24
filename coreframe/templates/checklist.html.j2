@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ rs.retailer | title }} {{ rs.guide_version }} checklist</title>
+<style>
+:root {
+  --bg: #fbfbfa; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e4e4e2;
+  --accent: #1f5fbf; --warn-bg: #fff4e0; --warn-ink: #8a4b00; --bad: #b3261e; --ok: #1b7a3a;
+  --chip: #f1f1ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141416; --panel: #1c1c1f; --ink: #ececef; --muted: #9a9aa1; --line: #2c2c31;
+    --accent: #7fb0ff; --warn-bg: #3a2a10; --warn-ink: #ffc97a; --bad: #ff8a80; --ok: #6fd48f; --chip: #26262a;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.meta { color: var(--muted); font-size: 13px; }
+.meta code { font-size: 12px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+.stat.warn b { color: var(--warn-ink); }
+.filters { display: flex; gap: 8px; margin: 8px 0 24px; flex-wrap: wrap; }
+.filters button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px;
+  padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+h2 { font-size: 16px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h2 small { color: var(--muted); font-weight: normal; }
+.rule { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.rule.needs_human { border-left: 4px solid var(--warn-ink); }
+.req { font-weight: 600; margin: 0 0 6px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.tag { background: var(--chip); border-radius: 6px; padding: 1px 8px; font-size: 12px; color: var(--muted); }
+.tag.review { background: var(--warn-bg); color: var(--warn-ink); }
+.tag.id { font-family: ui-monospace, Menlo, monospace; }
+dl { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+.src q { color: var(--muted); }
+.bad { color: var(--bad); font-size: 12px; }
+.ok { color: var(--ok); font-size: 12px; }
+.img { color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { dl { grid-template-columns: 1fr; } dt { margin-top: 6px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>{{ rs.retailer | title }} routing guide {{ rs.guide_version }}</h1>
+<div class="meta">Compliance checklist · extracted by <code>{{ rs.model }}</code> with prompt <code>{{ rs.prompt_version }}</code>
+  on {{ rs.extracted_at.strftime("%Y-%m-%d") }} · guide <code>{{ rs.guide_sha256[:12] }}</code></div>
+
+<div class="stats">
+  <div class="stat"><b>{{ stats.total }}</b><span>rules</span></div>
+  <div class="stat"><b>{{ stats.parameterized }}</b><span>auto-checkable</span></div>
+  <div class="stat warn"><b>{{ stats.needs_human }}</b><span>need human review</span></div>
+  <div class="stat"><b>{{ stats.with_chargeback }}</b><span>with stated chargeback</span></div>
+  <div class="stat{% if stats.unverified %} warn{% endif %}"><b>{{ stats.verified }}/{{ stats.citations }}</b><span>citations verified on page</span></div>
+</div>
+
+<div class="filters" role="group" aria-label="Filter rules">
+  <button type="button" data-filter="all" aria-pressed="true">All rules</button>
+  <button type="button" data-filter="needs_human" aria-pressed="false">Needs review only</button>
+  <button type="button" data-filter="parameterized" aria-pressed="false">Auto-checkable only</button>
+</div>
+
+{% for g in groups %}
+<section>
+<h2>{{ g.label }} <small>{{ g.rules | length }}</small></h2>
+{% for r in g.rules %}
+<article class="rule {{ r.status.value }}" data-status="{{ r.status.value }}">
+  <p class="req">{{ r.requirement }}</p>
+  <div class="tags">
+    <span class="tag id">{{ r.rule_id }}</span>
+    {% if r.status.value == "needs_human" %}<span class="tag review">needs human review</span>{% else %}<span class="tag">auto-checkable</span>{% endif %}
+    <span class="tag">confidence {{ r.confidence.value }}</span>
+  </div>
+  <dl>
+    <dt>Applies to</dt><dd>{{ r | applies }}</dd>
+    {% if r.parameters %}<dt>Check</dt><dd>{% for p in r.parameters %}<code>{{ p | param }}</code>{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
+    {% if r.chargeback %}<dt>Chargeback</dt><dd>{{ r.chargeback.text }}</dd>{% endif %}
+    {% if r.review_note %}<dt>Review</dt><dd>{{ r.review_note }}</dd>{% endif %}
+    <dt>Source{% if r.sources | length > 1 %}s{% endif %}</dt>
+    <dd class="src">{% for s in r.sources %}p. {{ s.page }}, {{ s.section }}: <q>{{ s.snippet }}</q>
+      {% if s.verified is true %}<span class="ok">✓ verified</span>{% elif s.verified is false %}<span class="bad">✗ not found on page</span>{% else %}<span class="img">image page</span>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</dd>
+  </dl>
+</article>
+{% endfor %}
+</section>
+{% endfor %}
+</main>
+<script>
+document.querySelectorAll(".filters button").forEach(btn => btn.addEventListener("click", () => {
+  const f = btn.dataset.filter;
+  document.querySelectorAll(".filters button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  document.querySelectorAll(".rule").forEach(el => { el.hidden = f !== "all" && el.dataset.status !== f; });
+  document.querySelectorAll("main section").forEach(sec => {
+    sec.hidden = !sec.querySelector(".rule:not([hidden])");
+  });
+}));
+</script>
+</body>
+</html>

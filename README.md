@@ -6,15 +6,20 @@ Coreframe Comply turns a routing guide into structured requirements with citatio
 
 **Design principle: the LLM extracts, code checks.** The model reads the guide and produces typed rules with page citations. A deterministic rule engine decides pass/fail. If the model can't map a rule to a checkable shipment field, the rule is marked `needs_human` and shown for review. The model never guesses a pass/fail.
 
-> Work in progress: v0 is being built in phases. Phase 1 (ingestion + schemas) is done.
+> Work in progress: v0 is being built in phases. Phase 1 (ingestion + schemas) and Phase 2 (extraction) are done.
 
 ## Quick start
 
 ```bash
 python3.11 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m coreframe ingest --guide data/sample/guides/northwind/v2025.1.pdf
+export ANTHROPIC_API_KEY=...        # only needed for uncached runs
+.venv/bin/python -m coreframe extract --guide data/sample/guides/northwind/v2025.1.pdf
 .venv/bin/pytest -q
 ```
+
+`extract` writes `rules/<retailer>_<version>.json` plus a checklist (`.checklist.md` and a self-contained `.checklist.html`). Every rule cites a page, a section and a verbatim snippet, and the code checks that each snippet actually appears on the cited page. Every model response is cached on disk, keyed by guide hash, prompt version, model and section. `--offline` replays from the cache with no API calls. Each run logs tokens, cost and latency to `runs/`.
+
+Useful flags: `--model` (default `claude-sonnet-5`, or set `COREFRAME_MODEL`), `--effort`, `--prompt` (versioned files in `prompts/`).
 
 ## Data
 

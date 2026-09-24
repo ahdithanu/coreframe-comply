@@ -42,6 +42,7 @@ class Operator(str, Enum):
     between = "between"  # value: [low, high], inclusive
     in_ = "in"           # value: list of allowed scalars
     before = "before"    # value: duration; target must occur >= value before `reference`
+    exists = "exists"    # value: true => target must be present/non-empty; false => must be absent
 
 
 class Confidence(str, Enum):
@@ -55,32 +56,31 @@ class RuleStatus(str, Enum):
     needs_human = "needs_human"
 
 
-# Shipment fields the checker knows how to evaluate. `[]` = applies to every
-# element of that list. Extending this is a code change + a test, on purpose.
-CHECKABLE_TARGETS: frozenset[str] = frozenset({
-    # shipment level
-    "shipment.carrier",
-    "shipment.shipment_type",
-    "shipment.destination_dc",
-    "shipment.asn_sent_at",
-    "shipment.appointment_time",
-    "shipment.ship_date",
-    "shipment.documents",            # 'in' => required document present
-    # carton level
-    "cartons[].length_in",
-    "cartons[].width_in",
-    "cartons[].height_in",
-    "cartons[].weight_lbs",
-    "cartons[].label_type",
-    "cartons[].label_position",
-    "cartons[].sscc_present",
-    # pallet level
-    "pallets[].height_in",
-    "pallets[].weight_lbs",
-    "pallets[].footprint",
-    "pallets[].stacked",
-    "pallets[].label_positions",
-})
+# Shipment fields the checker knows how to evaluate: target -> (type, unit, meaning).
+# `[]` = applies to every element of that list. Extending this is a code change + a
+# test, on purpose. The extraction prompt is rendered from this table.
+TARGETS: dict[str, tuple[str, str | None, str]] = {
+    "shipment.carrier":            ("string", None, "carrier name"),
+    "shipment.shipment_type":      ("string", None, "parcel | ltl | tl | intermodal | other"),
+    "shipment.destination_dc":     ("string", None, "destination DC identifier, e.g. '6012'"),
+    "shipment.asn_sent_at":        ("datetime", None, "when the ASN (EDI 856) was sent; absent if never sent"),
+    "shipment.appointment_time":   ("datetime", None, "scheduled delivery appointment; absent if none"),
+    "shipment.ship_date":          ("date", None, "date the shipment left the facility"),
+    "shipment.documents":          ("list[string]", None, "documents included, e.g. BOL, packing_list, commercial_invoice"),
+    "cartons[].length_in":         ("number", "in", "carton length"),
+    "cartons[].width_in":          ("number", "in", "carton width"),
+    "cartons[].height_in":         ("number", "in", "carton height"),
+    "cartons[].weight_lbs":        ("number", "lbs", "carton gross weight"),
+    "cartons[].label_type":        ("string", None, "shipping label symbology, e.g. GS1-128"),
+    "cartons[].label_position":    ("string", None, "where the label sits, snake_case"),
+    "cartons[].sscc_present":      ("bool", None, "carton label carries a scannable SSCC-18"),
+    "pallets[].height_in":         ("number", "in", "pallet height including the pallet"),
+    "pallets[].weight_lbs":        ("number", "lbs", "gross pallet weight"),
+    "pallets[].footprint":         ("string", "in", "pallet footprint 'LxW', e.g. '40x48'"),
+    "pallets[].stacked":           ("bool", None, "pallet is double-stacked"),
+    "pallets[].label_positions":   ("list[string]", None, "sides/positions carrying a pallet label"),
+}
+CHECKABLE_TARGETS: frozenset[str] = frozenset(TARGETS)
 
 # Fields an applies_to condition may key on.
 CONDITION_FIELDS: frozenset[str] = frozenset({
@@ -121,8 +121,10 @@ class Parameter(BaseModel):
                 raise ValueError("operator 'in' needs a non-empty list value")
         elif isinstance(v, list):
             raise ValueError(f"operator '{op.value}' takes a scalar value, got a list")
-        if op in (Operator.lte, Operator.gte) and not isinstance(v, (int, float)):
+        if op in (Operator.lte, Operator.gte) and (isinstance(v, bool) or not isinstance(v, (int, float))):
             raise ValueError(f"operator '{op.value}' needs a numeric value")
+        if op == Operator.exists and not isinstance(v, bool):
+            raise ValueError("operator 'exists' needs a boolean value")
         if op == Operator.before:
             if self.reference is None:
                 raise ValueError("operator 'before' needs a reference field")
@@ -166,6 +168,10 @@ class SourceRef(BaseModel):
     page: int = Field(ge=1)
     section: str
     snippet: str = Field(description="Verbatim from the guide, under 25 words.")
+    verified: bool | None = Field(
+        default=None,
+        description="Set by code: snippet found on the cited page. None = page has no text layer.",
+    )
 
     @field_validator("snippet")
     @classmethod
@@ -189,6 +195,9 @@ class Rule(BaseModel):
     sources: list[SourceRef] = Field(min_length=1, description="All places this rule appears (after dedup).")
     confidence: Confidence
     status: RuleStatus
+    review_note: str | None = Field(
+        default=None, description="Why a human should look: unmappable parameter, cross-reference, ambiguity.",
+    )
 
     @model_validator(mode="after")
     def _status_consistent(self) -> "Rule":
