@@ -1,0 +1,11 @@
+# Real routing guides, ground truth, caches and outputs stay local.
+# Only the synthetic sample is public.
+data/*
+!data/sample/
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.DS_Store
+.env
