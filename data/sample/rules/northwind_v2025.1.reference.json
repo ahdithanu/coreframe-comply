@@ -1,0 +1,1179 @@
+{
+  "retailer": "northwind",
+  "guide_version": "v2025.1",
+  "guide_sha256": "0a129d0a5f6e24714e73fe22baf8c6f5e1b655ea430a3eb462271d1b9cabe792",
+  "prompt_version": "reference",
+  "model": "human",
+  "extracted_at": "2026-09-30T00:00:00Z",
+  "rules": [
+    {
+      "rule_id": "northwind_v2025.1_chargeback_policy_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "chargeback_policy",
+      "requirement": "Chargeback disputes must be submitted through the Vendor Portal within 30 days of the notice.",
+      "parameters": [
+        {
+          "name": "dispute window",
+          "target": null,
+          "operator": "lte",
+          "value": 30,
+          "unit": "days",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 2,
+          "section": "1.2 Compliance Program",
+          "snippet": "Chargeback disputes must be submitted through the Vendor Portal within 30 days",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Billing process, not a shipment attribute."
+    },
+    {
+      "rule_id": "northwind_v2025.1_other_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "other",
+      "requirement": "Merchandise must be packed to withstand normal handling in transit.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 2,
+          "section": "1.2 Compliance Program",
+          "snippet": "Merchandise must be packed to withstand normal handling in transit.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Vague: no measurable criterion."
+    },
+    {
+      "rule_id": "northwind_v2025.1_asn_edi_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "asn_edi",
+      "requirement": "An EDI 856 ASN must be transmitted for every shipment.",
+      "parameters": [
+        {
+          "name": "ASN sent",
+          "target": "shipment.asn_sent_at",
+          "operator": "exists",
+          "value": true,
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 500.0,
+        "currency": "USD",
+        "basis": "per_shipment",
+        "text": "$500 per shipment"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "2.1 ASN Requirement",
+          "snippet": "Vendors must transmit an EDI 856 Advance Ship Notice for every shipment.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_asn_edi_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "asn_edi",
+      "requirement": "For LTL and TL shipments, the ASN must be received at least 2 hours before the delivery appointment.",
+      "parameters": [
+        {
+          "name": "ASN lead time",
+          "target": "shipment.asn_sent_at",
+          "operator": "before",
+          "value": 2,
+          "unit": "hours",
+          "reference": "shipment.appointment_time"
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "in",
+          "value": [
+            "ltl",
+            "tl"
+          ]
+        }
+      ],
+      "chargeback": {
+        "amount": 250.0,
+        "currency": "USD",
+        "basis": "per_shipment",
+        "text": "$250 per shipment"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "2.2 ASN Timing",
+          "snippet": "the ASN must be received by Northwind no later than 2 hours before the scheduled delivery appointment",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_asn_edi_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "asn_edi",
+      "requirement": "For parcel shipments, the ASN must be transmitted within 60 minutes after carrier tender.",
+      "parameters": [],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "eq",
+          "value": "parcel"
+        }
+      ],
+      "chargeback": {
+        "amount": 250.0,
+        "currency": "USD",
+        "basis": "per_shipment",
+        "text": "$250 per shipment"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "2.2 ASN Timing",
+          "snippet": "the ASN must be transmitted within 60 minutes after the parcel is tendered to the carrier",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "An 'after tender' window can't be expressed, and tender time isn't recorded."
+    },
+    {
+      "rule_id": "northwind_v2025.1_asn_edi_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "asn_edi",
+      "requirement": "Each carton in the ASN must carry an SSCC-18 matching its label.",
+      "parameters": [
+        {
+          "name": "SSCC present",
+          "target": "cartons[].sscc_present",
+          "operator": "eq",
+          "value": true,
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 5.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$5.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "2.3 ASN Content",
+          "snippet": "Each carton listed in the ASN must be identified by a unique SSCC-18",
+          "verified": true
+        }
+      ],
+      "confidence": "med",
+      "status": "parameterized",
+      "review_note": "Only SSCC presence is checkable; ASN-to-label matching needs the EDI 856."
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Carton length must be between 6 and 24 inches.",
+      "parameters": [
+        {
+          "name": "carton length",
+          "target": "cartons[].length_in",
+          "operator": "between",
+          "value": [
+            6,
+            24
+          ],
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 3.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$3.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "3.1 Dimensions and Weight",
+          "snippet": "Length 6 in 24 in",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Carton width must be between 4 and 18 inches.",
+      "parameters": [
+        {
+          "name": "carton width",
+          "target": "cartons[].width_in",
+          "operator": "between",
+          "value": [
+            4,
+            18
+          ],
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 3.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$3.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "3.1 Dimensions and Weight",
+          "snippet": "Width 4 in 18 in",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Carton height must be between 2 and 18 inches.",
+      "parameters": [
+        {
+          "name": "carton height",
+          "target": "cartons[].height_in",
+          "operator": "between",
+          "value": [
+            2,
+            18
+          ],
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 3.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$3.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 2,
+          "section": "3.1 Dimensions and Weight",
+          "snippet": "Height 2 in 18 in",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Carton weight must be between 1 and 50 lbs.",
+      "parameters": [
+        {
+          "name": "carton weight",
+          "target": "cartons[].weight_lbs",
+          "operator": "between",
+          "value": [
+            1,
+            50
+          ],
+          "unit": "lbs",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 3.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$3.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "3.1 Dimensions and Weight",
+          "snippet": "Weight 1 lb 50 lbs",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_005",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "For parcel shipments, cartons must not exceed 35 lbs.",
+      "parameters": [
+        {
+          "name": "parcel carton max weight",
+          "target": "cartons[].weight_lbs",
+          "operator": "lte",
+          "value": 35,
+          "unit": "lbs",
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "eq",
+          "value": "parcel"
+        }
+      ],
+      "chargeback": {
+        "amount": 3.0,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$3.00 per carton"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "3.1 Dimensions and Weight",
+          "snippet": "Cartons shipped via a parcel carrier must not exceed 35 lbs.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_006",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Cartons must be corrugated with a minimum burst strength of 200 psi (ECT 32).",
+      "parameters": [
+        {
+          "name": "burst strength",
+          "target": null,
+          "operator": "gte",
+          "value": 200,
+          "unit": "psi",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 3,
+          "section": "3.2 Carton Construction",
+          "snippet": "Cartons must be corrugated with a minimum burst strength of 200 psi (ECT 32).",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "No shipment field records carton construction."
+    },
+    {
+      "rule_id": "northwind_v2025.1_carton_007",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "carton",
+      "requirement": "Individual cartons must not be banded or strapped.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 3,
+          "section": "3.2 Carton Construction",
+          "snippet": "Do not use banding or strapping on individual cartons.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "No shipment field records banding."
+    },
+    {
+      "rule_id": "northwind_v2025.1_labeling_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "labeling",
+      "requirement": "Every carton must carry a 4 x 6 in GS1-128 label with a scannable SSCC-18 barcode.",
+      "parameters": [
+        {
+          "name": "label type",
+          "target": "cartons[].label_type",
+          "operator": "eq",
+          "value": "GS1-128",
+          "unit": null,
+          "reference": null
+        },
+        {
+          "name": "SSCC present",
+          "target": "cartons[].sscc_present",
+          "operator": "eq",
+          "value": true,
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 2.5,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$2.50 per carton, $250 minimum"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "4.1 Carton Labels",
+          "snippet": "Every carton must carry a 4 in x 6 in GS1-128 shipping label",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_labeling_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "labeling",
+      "requirement": "The carton label must be on the longest side, in the lower right corner.",
+      "parameters": [
+        {
+          "name": "label position",
+          "target": "cartons[].label_position",
+          "operator": "eq",
+          "value": "long_side_lower_right",
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 2.5,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$2.50 per carton, $250 minimum"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "4.1 Carton Labels",
+          "snippet": "placed on the longest side of the carton, in the lower right corner",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": "The 1.25 in edge clearance isn't recorded and needs a visual check."
+    },
+    {
+      "rule_id": "northwind_v2025.1_labeling_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "labeling",
+      "requirement": "Labels must be legible and not placed over seams or covered with tape.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 2.5,
+        "currency": "USD",
+        "basis": "per_carton",
+        "text": "$2.50 per carton, $250 minimum"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "4.1 Carton Labels",
+          "snippet": "Labels must be legible and must not be placed over carton seams or covered with tape.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Visual inspection only."
+    },
+    {
+      "rule_id": "northwind_v2025.1_labeling_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "labeling",
+      "requirement": "Each pallet must carry two labels, formatted per Section 4.1, on two adjacent sides.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 3,
+          "section": "4.2 Pallet Labels",
+          "snippet": "Each pallet must carry two pallet labels, formatted as specified in Section 4.1",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Adjacency of label sides can't be expressed with the current operators."
+    },
+    {
+      "rule_id": "northwind_v2025.1_pallet_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "pallet",
+      "requirement": "LTL and TL shipments must use 40 x 48 in GMA pallets.",
+      "parameters": [
+        {
+          "name": "pallet footprint",
+          "target": "pallets[].footprint",
+          "operator": "eq",
+          "value": "40x48",
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "in",
+          "value": [
+            "ltl",
+            "tl"
+          ]
+        }
+      ],
+      "chargeback": {
+        "amount": 75.0,
+        "currency": "USD",
+        "basis": "per_pallet",
+        "text": "$75 per pallet"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "5 Pallet Requirements",
+          "snippet": "All LTL and TL shipments must be palletized on 40 x 48 inch GMA pallets.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_pallet_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "pallet",
+      "requirement": "Pallet height must not exceed 72 inches including the pallet.",
+      "parameters": [
+        {
+          "name": "pallet max height",
+          "target": "pallets[].height_in",
+          "operator": "lte",
+          "value": 72,
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 75.0,
+        "currency": "USD",
+        "basis": "per_pallet",
+        "text": "$75 per pallet"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "5 Pallet Requirements",
+          "snippet": "Maximum pallet height is 72 inches (183 cm), including the pallet.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_pallet_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "pallet",
+      "requirement": "Gross pallet weight must not exceed 2,000 lbs.",
+      "parameters": [
+        {
+          "name": "pallet max weight",
+          "target": "pallets[].weight_lbs",
+          "operator": "lte",
+          "value": 2000,
+          "unit": "lbs",
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 75.0,
+        "currency": "USD",
+        "basis": "per_pallet",
+        "text": "$75 per pallet"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "5 Pallet Requirements",
+          "snippet": "Maximum gross pallet weight is 2,000 lbs.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_pallet_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "pallet",
+      "requirement": "Pallets shipped to DC 6012 or DC 6031 must not be double-stacked.",
+      "parameters": [
+        {
+          "name": "stacked",
+          "target": "pallets[].stacked",
+          "operator": "eq",
+          "value": false,
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "destination_dc",
+          "operator": "in",
+          "value": [
+            "6012",
+            "6031"
+          ]
+        }
+      ],
+      "chargeback": {
+        "amount": 75.0,
+        "currency": "USD",
+        "basis": "per_pallet",
+        "text": "$75 per pallet"
+      },
+      "sources": [
+        {
+          "page": 3,
+          "section": "5 Pallet Requirements",
+          "snippet": "Double-stacked pallets are accepted at all DCs except those listed in Appendix B.",
+          "verified": true
+        },
+        {
+          "page": 6,
+          "section": "Appendix B DC-Specific Requirements",
+          "snippet": "Double-stacked pallets are not accepted.",
+          "verified": null
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_pallet_005",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "pallet",
+      "requirement": "Pallets shipped to DC 6012 must not exceed 60 inches in height.",
+      "parameters": [
+        {
+          "name": "pallet max height (DC 6012)",
+          "target": "pallets[].height_in",
+          "operator": "lte",
+          "value": 60,
+          "unit": "in",
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "destination_dc",
+          "operator": "eq",
+          "value": "6012"
+        }
+      ],
+      "chargeback": {
+        "amount": 75.0,
+        "currency": "USD",
+        "basis": "per_pallet",
+        "text": "$75 per pallet"
+      },
+      "sources": [
+        {
+          "page": 6,
+          "section": "Appendix B DC-Specific Requirements",
+          "snippet": "Maximum pallet height is 60 inches.",
+          "verified": null
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_appointment_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "appointment",
+      "requirement": "DC 6031 accepts deliveries Monday through Friday only.",
+      "parameters": [],
+      "applies_to": [
+        {
+          "field": "destination_dc",
+          "operator": "eq",
+          "value": "6031"
+        }
+      ],
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 6,
+          "section": "Appendix B DC-Specific Requirements",
+          "snippet": "Deliveries are accepted Monday through Friday only.",
+          "verified": null
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Day-of-week constraints can't be expressed with the current operators."
+    },
+    {
+      "rule_id": "northwind_v2025.1_routing_carrier_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "routing_carrier",
+      "requirement": "Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 3,
+          "section": "6.1 Routing Requests",
+          "snippet": "Shipments of 150 lbs or more must be routed through the Northwind Routing Portal",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Routing-request date isn't recorded on the shipment."
+    },
+    {
+      "rule_id": "northwind_v2025.1_routing_carrier_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "routing_carrier",
+      "requirement": "Parcel shipments must use UPS or FedEx Ground.",
+      "parameters": [
+        {
+          "name": "carrier",
+          "target": "shipment.carrier",
+          "operator": "in",
+          "value": [
+            "UPS",
+            "FedEx Ground"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "eq",
+          "value": "parcel"
+        }
+      ],
+      "chargeback": {
+        "amount": null,
+        "currency": "USD",
+        "basis": "percent_of_invoice",
+        "text": "3% of invoice value"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "6.2 Approved Carriers",
+          "snippet": "Parcel UPS, FedEx Ground",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_routing_carrier_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "routing_carrier",
+      "requirement": "LTL shipments must use XPO, Old Dominion, or Estes.",
+      "parameters": [
+        {
+          "name": "carrier",
+          "target": "shipment.carrier",
+          "operator": "in",
+          "value": [
+            "XPO",
+            "Old Dominion",
+            "Estes"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "eq",
+          "value": "ltl"
+        }
+      ],
+      "chargeback": {
+        "amount": null,
+        "currency": "USD",
+        "basis": "percent_of_invoice",
+        "text": "3% of invoice value"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "6.2 Approved Carriers",
+          "snippet": "LTL XPO, Old Dominion, Estes",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_routing_carrier_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "routing_carrier",
+      "requirement": "TL carriers are assigned by the Northwind Routing Portal.",
+      "parameters": [],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "eq",
+          "value": "tl"
+        }
+      ],
+      "chargeback": {
+        "amount": null,
+        "currency": "USD",
+        "basis": "percent_of_invoice",
+        "text": "3% of invoice value"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "6.2 Approved Carriers",
+          "snippet": "TL Assigned by the Northwind Routing Portal",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Assigned carrier isn't in the shipment record."
+    },
+    {
+      "rule_id": "northwind_v2025.1_appointment_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "appointment",
+      "requirement": "LTL and TL deliveries require a scheduled appointment.",
+      "parameters": [
+        {
+          "name": "appointment scheduled",
+          "target": "shipment.appointment_time",
+          "operator": "exists",
+          "value": true,
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "in",
+          "value": [
+            "ltl",
+            "tl"
+          ]
+        }
+      ],
+      "chargeback": {
+        "amount": 150.0,
+        "currency": "USD",
+        "basis": "other",
+        "text": "$150 per occurrence"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "7 Delivery Appointments",
+          "snippet": "All LTL and TL deliveries require a scheduled appointment.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_appointment_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "appointment",
+      "requirement": "Appointments must be requested at least 48 hours before the requested delivery time.",
+      "parameters": [
+        {
+          "name": "appointment request lead time",
+          "target": null,
+          "operator": "gte",
+          "value": 48,
+          "unit": "hours",
+          "reference": null
+        }
+      ],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "in",
+          "value": [
+            "ltl",
+            "tl"
+          ]
+        }
+      ],
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 4,
+          "section": "7 Delivery Appointments",
+          "snippet": "Appointments must be requested at least 48 hours before the requested delivery time.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Appointment request time isn't recorded."
+    },
+    {
+      "rule_id": "northwind_v2025.1_appointment_004",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "appointment",
+      "requirement": "Carriers arriving more than 30 minutes after the appointment time will be refused.",
+      "parameters": [],
+      "applies_to": [
+        {
+          "field": "shipment_type",
+          "operator": "in",
+          "value": [
+            "ltl",
+            "tl"
+          ]
+        }
+      ],
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 4,
+          "section": "7 Delivery Appointments",
+          "snippet": "Carriers arriving more than 30 minutes after the appointment time will be refused.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Arrival time isn't recorded."
+    },
+    {
+      "rule_id": "northwind_v2025.1_documentation_001",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "documentation",
+      "requirement": "Each shipment must include a Bill of Lading referencing the Northwind PO number.",
+      "parameters": [
+        {
+          "name": "BOL included",
+          "target": "shipment.documents",
+          "operator": "in",
+          "value": [
+            "BOL"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 100.0,
+        "currency": "USD",
+        "basis": "per_shipment",
+        "text": "$100 per shipment"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "8 Documentation",
+          "snippet": "Each shipment must include a Bill of Lading (BOL) that references the Northwind PO number",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": "The PO reference on the BOL isn't checkable."
+    },
+    {
+      "rule_id": "northwind_v2025.1_documentation_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "documentation",
+      "requirement": "Each shipment must include a packing list.",
+      "parameters": [
+        {
+          "name": "packing list included",
+          "target": "shipment.documents",
+          "operator": "in",
+          "value": [
+            "packing_list"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
+      "applies_to": "all",
+      "chargeback": {
+        "amount": 100.0,
+        "currency": "USD",
+        "basis": "per_shipment",
+        "text": "$100 per shipment"
+      },
+      "sources": [
+        {
+          "page": 4,
+          "section": "8 Documentation",
+          "snippet": "and a packing list.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "parameterized",
+      "review_note": null
+    },
+    {
+      "rule_id": "northwind_v2025.1_documentation_003",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "documentation",
+      "requirement": "Shipments originating outside the United States require a commercial invoice.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 4,
+          "section": "8 Documentation",
+          "snippet": "A commercial invoice is required for shipments originating outside the United States.",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Origin country isn't recorded on the shipment."
+    },
+    {
+      "rule_id": "northwind_v2025.1_chargeback_policy_002",
+      "retailer": "northwind",
+      "guide_version": "v2025.1",
+      "category": "chargeback_policy",
+      "requirement": "Repeat violations of the same type within 90 days are charged at 150% of the listed amount.",
+      "parameters": [],
+      "applies_to": "all",
+      "chargeback": null,
+      "sources": [
+        {
+          "page": 4,
+          "section": "9 Chargeback Schedule",
+          "snippet": "Repeat violations of the same type within a 90-day period are charged at 150% of the",
+          "verified": true
+        }
+      ],
+      "confidence": "high",
+      "status": "needs_human",
+      "review_note": "Needs chargeback history across shipments."
+    }
+  ]
+}

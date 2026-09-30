@@ -102,6 +102,73 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def _rules_root(rules: Path) -> Path:
+    """data/sample/rules/x.json -> data/sample."""
+    return rules.parent.parent
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    from coreframe.engine import Outcome, check
+    from coreframe.render import write_check_report
+    from coreframe.schemas import RuleSet, Shipment
+
+    rs = RuleSet.model_validate_json(args.rules.read_text())
+    ship = Shipment.model_validate_json(args.shipment.read_text())
+    if ship.retailer.lower() != rs.retailer.lower():
+        print(f"error: shipment is for {ship.retailer!r} but rules are for {rs.retailer!r}")
+        return 2
+    report = check(rs, ship)
+    out = args.out or _rules_root(args.rules) / "reports" / f"{ship.shipment_id}.check"
+    md, html = write_check_report(report, ship, out)
+
+    fails = report.by_outcome(Outcome.FAIL)
+    print(f"{ship.shipment_id}: {len(fails)} FAIL, {len(report.by_outcome(Outcome.NEEDS_REVIEW))} NEEDS_REVIEW, "
+          f"{len(report.by_outcome(Outcome.PASS))} PASS, {len(report.by_outcome(Outcome.NOT_APPLICABLE))} N/A"
+          + (f"  exposure ${report.known_exposure_usd:,.2f}" if fails else ""))
+    for x in fails:
+        for pr in sorted(x.params, key=lambda pr: pr.outcome != Outcome.FAIL):
+            src = x.rule.sources[0]
+            if pr.outcome == Outcome.FAIL:
+                money = f"${x.exposure_usd:,.2f}" if x.exposure_usd is not None else (
+                    x.rule.chargeback.text if x.rule.chargeback else "no stated fee")
+                shared = " *" if x.fee_shared_with else ""
+                print(f"  FAIL {money:>22}{shared:2} {pr.expected}  | actual {pr.actual}  [p.{src.page} {src.section}]")
+            elif pr.outcome == Outcome.NEEDS_REVIEW:
+                print(f"  ???  {'(same rule)':>22}   {pr.expected}  | {pr.actual} ({pr.detail})")
+    if any(x.fee_shared_with for x in fails):
+        print("  * shares a chargeback line with another failing rule; the total bills each line once")
+    print(f"wrote {md}\n      {html}")
+    return 1 if fails else 0
+
+
+def cmd_synth(args: argparse.Namespace) -> int:
+    from coreframe.schemas import RuleSet
+    from coreframe.synth import generate, mutant_label
+
+    rs = RuleSet.model_validate_json(args.rules.read_text())
+    res = generate(rs)
+    out = args.out or _rules_root(args.rules) / "synthetic" / args.rules.stem
+    ship_dir = out / "shipments"
+    ship_dir.mkdir(parents=True, exist_ok=True)
+    for old in ship_dir.glob("*.json"):
+        old.unlink()
+    labels = [{"shipment_id": b.shipment_id, "base_id": b.shipment_id, "seeded_rule_id": None}
+              for b in res.bases]
+    for b in res.bases:
+        (ship_dir / f"{b.shipment_id}.json").write_text(b.model_dump_json(indent=2) + "\n")
+    for m in res.mutants:
+        (ship_dir / f"{m.shipment.shipment_id}.json").write_text(m.shipment.model_dump_json(indent=2) + "\n")
+        labels.append(mutant_label(m, rs))
+    (out / "labels.json").write_text(json.dumps({"rules": str(args.rules), "retailer": rs.retailer,
+                                                  "guide_version": rs.guide_version, "labels": labels}, indent=2) + "\n")
+    print(f"{len(res.bases)} compliant base shipments, {len(res.mutants)} seeded violations -> {out}")
+    for sid, rules in res.unrepairable:
+        print(f"  could not make {sid} compliant; still failing {rules}")
+    for rid, pname, why in res.skipped:
+        print(f"  skipped {rid} / {pname}: {why}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="coreframe")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -121,6 +188,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--prompt", default=DEFAULT_PROMPT, help="prompt file name under prompts/ (versioned)")
     p.add_argument("--offline", action="store_true", help="use cached responses only; fail on a cache miss")
     p.set_defaults(func=cmd_extract)
+
+    p = sub.add_parser("check", help="check a shipment against extracted rules (exit 1 if any FAIL)")
+    p.add_argument("--rules", type=Path, required=True)
+    p.add_argument("--shipment", type=Path, required=True)
+    p.add_argument("--out", type=Path, help="report path without extension")
+    p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("synth", help="generate compliant shipments plus seeded violations with labels")
+    p.add_argument("--rules", type=Path, required=True)
+    p.add_argument("--out", type=Path)
+    p.set_defaults(func=cmd_synth)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -19,6 +19,7 @@ import base64
 import difflib
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -145,7 +146,7 @@ def _user_content(chunk: Chunk) -> list[dict]:
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", s.lower())
+    return re.sub(r"[^a-z0-9]+", "", unicodedata.normalize("NFKC", s).lower())
 
 
 def page_texts(guide: ParsedGuide) -> dict[int, str]:

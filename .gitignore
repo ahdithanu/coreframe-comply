@@ -2,6 +2,10 @@
 # Only the synthetic sample is public.
 data/*
 !data/sample/
+# regenerable with `coreframe synth` / `coreframe check`; keep only the demo report
+data/sample/synthetic/
+data/sample/reports/*
+!data/sample/reports/DEMO-*
 
 .venv/
 __pycache__/

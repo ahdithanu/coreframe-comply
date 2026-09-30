@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Literal
@@ -174,8 +175,13 @@ def _stitch_continued_tables(pages: list["Page"]) -> None:
             b.table.continued_from_page = a.page
 
 
-def _clean_cell(c: str | None) -> str:
-    return " ".join((c or "").split())
+def clean_text(s: str | None) -> str:
+    """NFKC folds typographic ligatures (\ufb01 -> 'fi') and compatibility forms, so the
+    model sees, and quotes, the same characters that citation checks match against."""
+    return " ".join(unicodedata.normalize("NFKC", s or "").split())
+
+
+_clean_cell = clean_text
 
 
 def _parse_page(page: pymupdf.Page, running: set[str], body: float) -> tuple[list[Block], int, float]:
@@ -216,7 +222,7 @@ def _parse_page(page: pymupdf.Page, running: set[str], body: float) -> tuple[lis
             spans = [s for s in line["spans"] if s["text"].strip()]
             if not spans:
                 continue
-            text = " ".join("".join(s["text"] for s in line["spans"]).split())
+            text = clean_text("".join(s["text"] for s in line["spans"]))
             bbox = pymupdf.Rect(line["bbox"])
             center = (bbox.tl + bbox.br) / 2
             if any(center in r for r in table_rects):

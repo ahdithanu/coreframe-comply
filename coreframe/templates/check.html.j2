@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check {{ r.shipment_id }}</title>
+<style>
+:root { --bg:#fbfbfa; --panel:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e4e2; --bad:#b3261e; --bad-bg:#fdecea;
+  --warn:#8a4b00; --warn-bg:#fff4e0; --ok:#1b7a3a; --chip:#f1f1ef; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141416; --panel:#1c1c1f; --ink:#ececef;
+  --muted:#9a9aa1; --line:#2c2c31; --bad:#ff8a80; --bad-bg:#3a1714; --warn:#ffc97a; --warn-bg:#3a2a10; --ok:#6fd48f; --chip:#26262a; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+main { max-width:960px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:24px; margin:0 0 4px; } .meta { color:var(--muted); font-size:13px; }
+.verdict { margin:20px 0; padding:16px 18px; border-radius:10px; border:1px solid var(--line); background:var(--panel); }
+.verdict.bad { background:var(--bad-bg); border-color:transparent; } .verdict b.big { font-size:22px; display:block; }
+.verdict.bad b.big { color:var(--bad); } .verdict.good b.big { color:var(--ok); }
+h2 { font-size:16px; margin:28px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.v { background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--bad); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.v.review { border-left-color:var(--warn); }
+.req { font-weight:600; margin:0 0 8px; } .money { float:right; font-weight:700; font-variant-numeric:tabular-nums; color:var(--bad); }
+dl { display:grid; grid-template-columns:110px 1fr; gap:4px 12px; margin:0; font-size:14px; } dt { color:var(--muted); } dd { margin:0; overflow-wrap:anywhere; }
+code { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--chip); padding:1px 5px; border-radius:4px; }
+q { color:var(--muted); } .id { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--muted); }
+details { margin-top:12px; } summary { cursor:pointer; color:var(--muted); }
+ul.plain { padding-left:18px; font-size:14px; }
+@media (max-width:560px) { dl { grid-template-columns:1fr; } .money { float:none; display:block; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Pre-ship check: {{ r.shipment_id }}</h1>
+<div class="meta">{{ r.retailer | title }} routing guide {{ r.guide_version }} · {{ s.shipment_type or "unknown type" }} · carrier {{ s.carrier }} · DC {{ s.destination_dc }} · ship date {{ s.ship_date }} · {{ s.cartons | length }} cartons, {{ s.pallets | length }} pallets</div>
+
+<div class="verdict {{ 'bad' if fails else 'good' }}">
+  <b class="big">{% if fails %}{{ fails | length }} violation{{ "" if fails | length == 1 else "s" }}: fix before shipping{% else %}No violations found{% endif %}</b>
+  {% if fails %}Estimated chargeback exposure <b>${{ "%.2f" | format(r.known_exposure_usd) }}</b>{% if unpriced %} plus {{ unpriced }} rule{{ "" if unpriced == 1 else "s" }} with no fixed amount{% endif %} · {% endif %}{{ review | length }} need review · {{ passed | length }} passed · {{ na | length }} not applicable
+</div>
+
+{% if fails %}<h2>Violations</h2>
+{% for x in fails %}
+<article class="v">
+  <span class="money">{{ "$%.2f" | format(x.exposure_usd) if x.exposure_usd is not none else (x.rule.chargeback.text if x.rule.chargeback else "no stated fee") }}</span>
+  <p class="req">{{ x.rule.requirement }}</p>
+  <dl>
+  {% for pr in x.params if pr.outcome.value in ("FAIL", "NEEDS_REVIEW") %}
+    <dt>Expected</dt><dd><code>{{ pr.expected }}</code></dd>
+    <dt>Actual</dt><dd>{{ pr.actual }}{% if pr.detail %} ({{ pr.detail }}){% endif %}</dd>
+  {% endfor %}
+    <dt>Chargeback</dt><dd>{{ x.rule.chargeback.text if x.rule.chargeback else "not stated in the guide" }}{% if x.fee_shared_with %} · billed once with {{ x.fee_shared_with | length }} other rule{{ "" if x.fee_shared_with | length == 1 else "s" }} on this line{% endif %}</dd>
+    <dt>Source</dt><dd>p. {{ x.rule.sources[0].page }}, {{ x.rule.sources[0].section }}: <q>{{ x.rule.sources[0].snippet }}</q></dd>
+    <dt>Rule</dt><dd class="id">{{ x.rule.rule_id }}</dd>
+  </dl>
+</article>
+{% endfor %}
+<details><summary>Exposure by chargeback line (each line billed once)</summary>
+<ul class="plain">{% for g in r.fee_groups %}<li><b>{{ "$%.2f" | format(g.exposure_usd) if g.exposure_usd is not none else "unknown" }}</b> · {{ g.text }} · {{ g.units | join(", ") }} ({{ g.rule_ids | length }} rule{{ "" if g.rule_ids | length == 1 else "s" }})</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{% if review %}<h2>Needs human review</h2>
+{% for x in review %}
+<article class="v review">
+  <p class="req">{{ x.rule.requirement }}</p>
+  <dl><dt>Why</dt><dd>{{ x.reason }}</dd>
+  <dt>Source</dt><dd>p. {{ x.rule.sources[0].page }}, {{ x.rule.sources[0].section }}</dd>
+  <dt>Rule</dt><dd class="id">{{ x.rule.rule_id }}</dd></dl>
+</article>
+{% endfor %}{% endif %}
+
+<details><summary>{{ passed | length }} passed, {{ na | length }} not applicable</summary>
+<ul class="plain">{% for x in passed %}<li>✓ {{ x.rule.requirement }}</li>{% endfor %}
+{% for x in na %}<li>– {{ x.rule.requirement }} <span class="id">({{ x.reason }})</span></li>{% endfor %}</ul>
+</details>
+</main>
+</body>
+</html>

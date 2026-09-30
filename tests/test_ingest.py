@@ -70,3 +70,9 @@ def test_scanned_page_flagged_rendered_and_chunked(guide, chunks):
     assert p6.image_reasons == ["scan"] and Path(p6.image_path).exists()
     scan = chunks["[page 6: image only]"]
     assert scan.pages == [6] and scan.images[0].page == 6
+
+
+def test_ligatures_are_folded(guide):
+    # the PDF encodes "fi" in "identified" as U+FB01; the model and the citation check must see "fi"
+    text = " ".join(b.text for p in guide.pages for b in p.blocks)
+    assert "ﬁ" not in text and "identified by a unique SSCC-18" in text

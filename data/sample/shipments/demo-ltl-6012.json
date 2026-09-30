@@ -1,0 +1,22 @@
+{
+  "shipment_id": "DEMO-LTL-6012",
+  "retailer": "northwind",
+  "shipment_type": "ltl",
+  "product_type": "housewares",
+  "ship_date": "2026-10-06",
+  "asn_sent_at": "2026-10-08T09:10:00-07:00",
+  "carrier": "FedEx Freight",
+  "appointment_time": "2026-10-08T10:00:00-07:00",
+  "destination_dc": "6012",
+  "cartons": [
+    {"carton_id": "C001", "length_in": 22, "width_in": 16, "height_in": 14, "weight_lbs": 38, "label_type": "GS1-128", "label_position": "long_side_lower_right", "sscc_present": true},
+    {"carton_id": "C002", "length_in": 22, "width_in": 16, "height_in": 14, "weight_lbs": 52, "label_type": "GS1-128", "label_position": "long_side_lower_right", "sscc_present": true},
+    {"carton_id": "C003", "length_in": 26, "width_in": 16, "height_in": 14, "weight_lbs": 41, "label_type": "GS1-128", "label_position": "long_side_lower_right", "sscc_present": false},
+    {"carton_id": "C004", "length_in": 22, "width_in": 16, "height_in": 14, "weight_lbs": 36, "label_type": null, "label_position": "short_side_center", "sscc_present": true}
+  ],
+  "pallets": [
+    {"pallet_id": "P01", "height_in": 66, "weight_lbs": 1450, "footprint": "40x48", "stacked": true, "label_positions": ["north", "east"]},
+    {"pallet_id": "P02", "height_in": 58, "weight_lbs": 1210, "footprint": "40x48", "stacked": false, "label_positions": ["north"]}
+  ],
+  "documents": ["BOL"]
+}

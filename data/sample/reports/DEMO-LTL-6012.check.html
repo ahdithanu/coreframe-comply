@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check DEMO-LTL-6012</title>
+<style>
+:root { --bg:#fbfbfa; --panel:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e4e2; --bad:#b3261e; --bad-bg:#fdecea;
+  --warn:#8a4b00; --warn-bg:#fff4e0; --ok:#1b7a3a; --chip:#f1f1ef; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141416; --panel:#1c1c1f; --ink:#ececef;
+  --muted:#9a9aa1; --line:#2c2c31; --bad:#ff8a80; --bad-bg:#3a1714; --warn:#ffc97a; --warn-bg:#3a2a10; --ok:#6fd48f; --chip:#26262a; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+main { max-width:960px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:24px; margin:0 0 4px; } .meta { color:var(--muted); font-size:13px; }
+.verdict { margin:20px 0; padding:16px 18px; border-radius:10px; border:1px solid var(--line); background:var(--panel); }
+.verdict.bad { background:var(--bad-bg); border-color:transparent; } .verdict b.big { font-size:22px; display:block; }
+.verdict.bad b.big { color:var(--bad); } .verdict.good b.big { color:var(--ok); }
+h2 { font-size:16px; margin:28px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.v { background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--bad); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.v.review { border-left-color:var(--warn); }
+.req { font-weight:600; margin:0 0 8px; } .money { float:right; font-weight:700; font-variant-numeric:tabular-nums; color:var(--bad); }
+dl { display:grid; grid-template-columns:110px 1fr; gap:4px 12px; margin:0; font-size:14px; } dt { color:var(--muted); } dd { margin:0; overflow-wrap:anywhere; }
+code { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--chip); padding:1px 5px; border-radius:4px; }
+q { color:var(--muted); } .id { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--muted); }
+details { margin-top:12px; } summary { cursor:pointer; color:var(--muted); }
+ul.plain { padding-left:18px; font-size:14px; }
+@media (max-width:560px) { dl { grid-template-columns:1fr; } .money { float:none; display:block; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Pre-ship check: DEMO-LTL-6012</h1>
+<div class="meta">Northwind routing guide v2025.1 · ltl · carrier FedEx Freight · DC 6012 · ship date 2026-10-06 · 4 cartons, 2 pallets</div>
+
+<div class="verdict bad">
+  <b class="big">10 violations: fix before shipping</b>
+Estimated chargeback exposure <b>$686.00</b> plus 1 rule with no fixed amount · 9 need review · 8 passed · 7 not applicable
+</div>
+
+<h2>Violations</h2>
+<article class="v">
+  <span class="money">$250.00</span>
+  <p class="req">For LTL and TL shipments, the ASN must be received at least 2 hours before the delivery appointment.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>shipment.asn_sent_at at least 2 hours before shipment.appointment_time</code></dd>
+    <dt>Actual</dt><dd>0.8 hours before</dd>
+    <dt>Chargeback</dt><dd>$250 per shipment</dd>
+    <dt>Source</dt><dd>p. 2, 2.2 ASN Timing: <q>the ASN must be received by Northwind no later than 2 hours before the scheduled delivery appointment</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_asn_edi_002</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$250.00</span>
+  <p class="req">Every carton must carry a 4 x 6 in GS1-128 label with a scannable SSCC-18 barcode.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>cartons[].label_type = GS1-128</code></dd>
+    <dt>Actual</dt><dd>C004: undecidable (not recorded on the shipment)</dd>
+    <dt>Expected</dt><dd><code>cartons[].sscc_present = true</code></dd>
+    <dt>Actual</dt><dd>C003: false</dd>
+    <dt>Chargeback</dt><dd>$2.50 per carton, $250 minimum · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 3, 4.1 Carton Labels: <q>Every carton must carry a 4 in x 6 in GS1-128 shipping label</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_labeling_001</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$250.00</span>
+  <p class="req">The carton label must be on the longest side, in the lower right corner.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>cartons[].label_position = long_side_lower_right</code></dd>
+    <dt>Actual</dt><dd>C004: short_side_center</dd>
+    <dt>Chargeback</dt><dd>$2.50 per carton, $250 minimum · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 3, 4.1 Carton Labels: <q>placed on the longest side of the carton, in the lower right corner</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_labeling_002</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$100.00</span>
+  <p class="req">Each shipment must include a packing list.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>shipment.documents in packing_list</code></dd>
+    <dt>Actual</dt><dd>shipment: BOL (missing packinglist)</dd>
+    <dt>Chargeback</dt><dd>$100 per shipment</dd>
+    <dt>Source</dt><dd>p. 4, 8 Documentation: <q>and a packing list.</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_documentation_002</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$75.00</span>
+  <p class="req">Pallets shipped to DC 6012 or DC 6031 must not be double-stacked.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>pallets[].stacked = false</code></dd>
+    <dt>Actual</dt><dd>P01: true</dd>
+    <dt>Chargeback</dt><dd>$75 per pallet · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 3, 5 Pallet Requirements: <q>Double-stacked pallets are accepted at all DCs except those listed in Appendix B.</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_pallet_004</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$75.00</span>
+  <p class="req">Pallets shipped to DC 6012 must not exceed 60 inches in height.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>pallets[].height_in ≤ 60 in</code></dd>
+    <dt>Actual</dt><dd>P01: 66 in</dd>
+    <dt>Chargeback</dt><dd>$75 per pallet · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 6, Appendix B DC-Specific Requirements: <q>Maximum pallet height is 60 inches.</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_pallet_005</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$5.00</span>
+  <p class="req">Each carton in the ASN must carry an SSCC-18 matching its label.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>cartons[].sscc_present = true</code></dd>
+    <dt>Actual</dt><dd>C003: false</dd>
+    <dt>Chargeback</dt><dd>$5.00 per carton</dd>
+    <dt>Source</dt><dd>p. 2, 2.3 ASN Content: <q>Each carton listed in the ASN must be identified by a unique SSCC-18</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_asn_edi_004</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$3.00</span>
+  <p class="req">Carton length must be between 6 and 24 inches.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>cartons[].length_in between 6 and 24 in</code></dd>
+    <dt>Actual</dt><dd>C003: 26 in</dd>
+    <dt>Chargeback</dt><dd>$3.00 per carton · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 2, 3.1 Dimensions and Weight: <q>Length 6 in 24 in</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_carton_001</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">$3.00</span>
+  <p class="req">Carton weight must be between 1 and 50 lbs.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>cartons[].weight_lbs between 1 and 50 lbs</code></dd>
+    <dt>Actual</dt><dd>C002: 52 lbs</dd>
+    <dt>Chargeback</dt><dd>$3.00 per carton · billed once with 1 other rule on this line</dd>
+    <dt>Source</dt><dd>p. 3, 3.1 Dimensions and Weight: <q>Weight 1 lb 50 lbs</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_carton_004</dd>
+  </dl>
+</article>
+<article class="v">
+  <span class="money">3% of invoice value</span>
+  <p class="req">LTL shipments must use XPO, Old Dominion, or Estes.</p>
+  <dl>
+    <dt>Expected</dt><dd><code>shipment.carrier in XPO, Old Dominion, Estes</code></dd>
+    <dt>Actual</dt><dd>shipment: FedEx Freight</dd>
+    <dt>Chargeback</dt><dd>3% of invoice value</dd>
+    <dt>Source</dt><dd>p. 4, 6.2 Approved Carriers: <q>LTL XPO, Old Dominion, Estes</q></dd>
+    <dt>Rule</dt><dd class="id">northwind_v2025.1_routing_carrier_003</dd>
+  </dl>
+</article>
+<details><summary>Exposure by chargeback line (each line billed once)</summary>
+<ul class="plain"><li><b>$250.00</b> · $250 per shipment · shipment (1 rule)</li><li><b>$250.00</b> · $2.50 per carton, $250 minimum · C003, C004 (2 rules)</li><li><b>$100.00</b> · $100 per shipment · shipment (1 rule)</li><li><b>$75.00</b> · $75 per pallet · P01 (2 rules)</li><li><b>$6.00</b> · $3.00 per carton · C002, C003 (2 rules)</li><li><b>$5.00</b> · $5.00 per carton · C003 (1 rule)</li><li><b>unknown</b> · 3% of invoice value · shipment (1 rule)</li></ul>
+</details>
+
+<h2>Needs human review</h2>
+<article class="v review">
+  <p class="req">Merchandise must be packed to withstand normal handling in transit.</p>
+  <dl><dt>Why</dt><dd>Vague: no measurable criterion.</dd>
+  <dt>Source</dt><dd>p. 2, 1.2 Compliance Program</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_other_001</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Cartons must be corrugated with a minimum burst strength of 200 psi (ECT 32).</p>
+  <dl><dt>Why</dt><dd>No shipment field records carton construction.</dd>
+  <dt>Source</dt><dd>p. 3, 3.2 Carton Construction</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_carton_006</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Individual cartons must not be banded or strapped.</p>
+  <dl><dt>Why</dt><dd>No shipment field records banding.</dd>
+  <dt>Source</dt><dd>p. 3, 3.2 Carton Construction</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_carton_007</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Labels must be legible and not placed over seams or covered with tape.</p>
+  <dl><dt>Why</dt><dd>Visual inspection only.</dd>
+  <dt>Source</dt><dd>p. 3, 4.1 Carton Labels</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_labeling_003</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Each pallet must carry two labels, formatted per Section 4.1, on two adjacent sides.</p>
+  <dl><dt>Why</dt><dd>Adjacency of label sides can't be expressed with the current operators.</dd>
+  <dt>Source</dt><dd>p. 3, 4.2 Pallet Labels</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_labeling_004</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.</p>
+  <dl><dt>Why</dt><dd>Routing-request date isn't recorded on the shipment.</dd>
+  <dt>Source</dt><dd>p. 3, 6.1 Routing Requests</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_routing_carrier_001</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Appointments must be requested at least 48 hours before the requested delivery time.</p>
+  <dl><dt>Why</dt><dd>Appointment request time isn't recorded.</dd>
+  <dt>Source</dt><dd>p. 4, 7 Delivery Appointments</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_appointment_003</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Carriers arriving more than 30 minutes after the appointment time will be refused.</p>
+  <dl><dt>Why</dt><dd>Arrival time isn't recorded.</dd>
+  <dt>Source</dt><dd>p. 4, 7 Delivery Appointments</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_appointment_004</dd></dl>
+</article>
+<article class="v review">
+  <p class="req">Shipments originating outside the United States require a commercial invoice.</p>
+  <dl><dt>Why</dt><dd>Origin country isn't recorded on the shipment.</dd>
+  <dt>Source</dt><dd>p. 4, 8 Documentation</dd>
+  <dt>Rule</dt><dd class="id">northwind_v2025.1_documentation_003</dd></dl>
+</article>
+
+<details><summary>8 passed, 7 not applicable</summary>
+<ul class="plain"><li>✓ An EDI 856 ASN must be transmitted for every shipment.</li><li>✓ Carton width must be between 4 and 18 inches.</li><li>✓ Carton height must be between 2 and 18 inches.</li><li>✓ LTL and TL shipments must use 40 x 48 in GMA pallets.</li><li>✓ Pallet height must not exceed 72 inches including the pallet.</li><li>✓ Gross pallet weight must not exceed 2,000 lbs.</li><li>✓ LTL and TL deliveries require a scheduled appointment.</li><li>✓ Each shipment must include a Bill of Lading referencing the Northwind PO number.</li><li>– Chargeback disputes must be submitted through the Vendor Portal within 30 days of the notice. <span class="id">(billing policy, not a shipment check)</span></li><li>– For parcel shipments, the ASN must be transmitted within 60 minutes after carrier tender. <span class="id">(shipment_type is 'ltl'; rule applies to eq parcel)</span></li><li>– For parcel shipments, cartons must not exceed 35 lbs. <span class="id">(shipment_type is 'ltl'; rule applies to eq parcel)</span></li><li>– DC 6031 accepts deliveries Monday through Friday only. <span class="id">(destination_dc is '6012'; rule applies to eq 6031)</span></li><li>– Parcel shipments must use UPS or FedEx Ground. <span class="id">(shipment_type is 'ltl'; rule applies to eq parcel)</span></li><li>– TL carriers are assigned by the Northwind Routing Portal. <span class="id">(shipment_type is 'ltl'; rule applies to eq tl)</span></li><li>– Repeat violations of the same type within 90 days are charged at 150% of the listed amount. <span class="id">(billing policy, not a shipment check)</span></li></ul>
+</details>
+</main>
+</body>
+</html>

@@ -6,7 +6,7 @@ Coreframe Comply turns a routing guide into structured requirements with citatio
 
 **Design principle: the LLM extracts, code checks.** The model reads the guide and produces typed rules with page citations. A deterministic rule engine decides pass/fail. If the model can't map a rule to a checkable shipment field, the rule is marked `needs_human` and shown for review. The model never guesses a pass/fail.
 
-> Work in progress: v0 is being built in phases. Phase 1 (ingestion + schemas) and Phase 2 (extraction) are done.
+> Work in progress: v0 is being built in phases. Phases 1–3 (ingestion, extraction, deterministic checker) are done. Phase 2 has not yet been run against the live model.
 
 ## Quick start
 
@@ -18,6 +18,17 @@ export ANTHROPIC_API_KEY=...        # only needed for uncached runs
 ```
 
 `extract` writes `rules/<retailer>_<version>.json` plus a checklist (`.checklist.md` and a self-contained `.checklist.html`). Every rule cites a page, a section and a verbatim snippet, and the code checks that each snippet actually appears on the cited page. Every model response is cached on disk, keyed by guide hash, prompt version, model and section. `--offline` replays from the cache with no API calls. Each run logs tokens, cost and latency to `runs/`.
+
+Check a shipment (exits 1 if anything fails, so it can gate a WMS or CI step):
+
+```bash
+.venv/bin/python -m coreframe check --rules data/sample/rules/northwind_v2025.1.reference.json \
+    --shipment data/sample/shipments/demo-ltl-6012.json
+```
+
+The report lists each violation with expected vs. actual values, the failing carton or pallet, the page citation and the estimated chargeback, sorted by exposure. Each chargeback-schedule line is billed once, even when several rules map to it. Missing data is flagged for review rather than passed, and rules that couldn't be turned into checks are listed for human review. See [the demo report](data/sample/reports/DEMO-LTL-6012.check.md).
+
+`coreframe synth --rules <rules.json>` generates compliant shipments for every shipment type and DC the rules mention, then seeds one known violation per checkable parameter, with labels. `data/sample/rules/northwind_v2025.1.reference.json` is a hand-written reference rule set, so checker quality can be measured separately from extraction quality.
 
 Useful flags: `--model` (default `claude-sonnet-5`, or set `COREFRAME_MODEL`), `--effort`, `--prompt` (versioned files in `prompts/`).
 

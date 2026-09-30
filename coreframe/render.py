@@ -97,3 +97,22 @@ def write_checklist(rs: RuleSet, out_base: Path, run_summary: dict | None = None
 def write_ruleset(rs: RuleSet, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(rs.model_dump(mode="json"), indent=2) + "\n")
+
+
+def write_check_report(report, shipment, out_base: Path) -> tuple[Path, Path]:
+    from coreframe.engine import Outcome
+
+    ctx = {
+        "r": report, "s": shipment,
+        "fails": report.by_outcome(Outcome.FAIL),
+        "review": report.by_outcome(Outcome.NEEDS_REVIEW),
+        "passed": report.by_outcome(Outcome.PASS),
+        "na": report.by_outcome(Outcome.NOT_APPLICABLE),
+        "unpriced": sum(x.exposure_usd is None for x in report.by_outcome(Outcome.FAIL)),
+    }
+    env = _env()
+    out_base.parent.mkdir(parents=True, exist_ok=True)
+    md, html = (out_base.parent / f"{out_base.name}.md"), (out_base.parent / f"{out_base.name}.html")
+    md.write_text(env.get_template("check.md.j2").render(**ctx))
+    html.write_text(env.get_template("check.html.j2").render(**ctx))
+    return md, html
