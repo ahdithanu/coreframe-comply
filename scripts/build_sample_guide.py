@@ -14,21 +14,24 @@ failure modes real routing guides produce:
   * a running header/footer that ingestion must strip
   * non-rule text (glossary) that extraction should NOT turn into rules
 
-Usage:  python scripts/build_sample_guide.py
-Writes: data/sample/guides/northwind/v2025.1.pdf
-        data/sample/ground_truth/northwind_v2025.1.csv
+Two versions are built so version diffing can be tested. v2025.2 applies V2_EDITS to
+v2025.1: tightened limits, a carrier swap, a fee change, added and removed rules, a
+renumbered section and a reworded sentence (the last two must NOT show up as changes).
+
+Usage:  python scripts/build_sample_guide.py            # both versions
+Writes: data/sample/guides/northwind/<version>.pdf
+        data/sample/ground_truth/northwind_<version>.csv
 """
 
 from __future__ import annotations
 
 import csv
+from dataclasses import dataclass
 from pathlib import Path
 
 import pymupdf
 
 ROOT = Path(__file__).resolve().parents[1]
-GUIDE_PATH = ROOT / "data/sample/guides/northwind/v2025.1.pdf"
-GT_PATH = ROOT / "data/sample/ground_truth/northwind_v2025.1.csv"
 
 LETTER = pymupdf.paper_rect("letter")
 BODY = LETTER + (60, 72, -60, -72)
@@ -164,7 +167,7 @@ is 60 inches.</p>
 accepted Monday through Friday only.</p>
 """
 
-HEADER = "Northwind Retail Co. | Vendor Routing & Compliance Guide v2025.1"
+HEADER = "Northwind Retail Co. | Vendor Routing & Compliance Guide {version}"
 
 # Ground truth: one row per (rule, parameter). `anchor` is a verbatim phrase used to
 # locate the page; rules in the scanned appendix use anchor=None and page="scan".
@@ -220,11 +223,87 @@ def _render_story(html: str, out: Path) -> None:
     writer.close()
 
 
-def build(tmp_dir: Path) -> pymupdf.Document:
+# --------------------------------------------------------------------------- #
+# Version 2025.2: explicit edits on top of 2025.1
+# --------------------------------------------------------------------------- #
+
+V2_HTML_EDITS = [
+    # (where, old, new)
+    ("cover", "Version 2025.1 &#8212; Effective March 1, 2025", "Version 2025.2 &#8212; Effective September 1, 2025"),
+    ("body", "no later than 2 hours", "no later than 4 hours"),                                   # stricter
+    ("body", "<td>Weight</td><td>1 lb</td><td>50 lbs</td>", "<td>Weight</td><td>1 lb</td><td>45 lbs</td>"),  # stricter
+    ("body", "<h2>3.2 Carton Construction</h2>",                                                  # renumber + add
+     "<h2>3.2 Inner Packs</h2>\n<p>Inner packs must contain a uniform quantity of units.</p>\n<h2>3.3 Carton Construction</h2>"),
+    ("body", " (ECT 32).\nDo not use banding or strapping on individual cartons.</p>", " (ECT 32).</p>"),  # removed
+    ("body", "<p>Maximum gross pallet weight is 2,000 lbs.</p>",                                  # reworded only
+     "<p>Pallets may not exceed 2,000 lbs gross weight.</p>"),
+    ("body", "<td>LTL</td><td>XPO, Old Dominion, Estes</td>", "<td>LTL</td><td>XPO, Old Dominion, Saia</td>"),
+    ("body", "<p>A commercial invoice is required",                                               # added
+     "<p>Shipments containing hazardous materials must include a Safety Data Sheet (SDS).</p>\n<p>A commercial invoice is required"),
+    ("body", "<td>Late ASN</td><td>2.2</td><td>$250 per shipment</td>", "<td>Late ASN</td><td>2.2</td><td>$300 per shipment</td>"),
+    ("scan", "accepted Monday through Friday only.</p>",                                         # added on the scanned page
+     "accepted Monday through Friday only.</p>\n<p><b>DC 6040 (Dallas, TX)</b>: Maximum pallet height is 64 inches.</p>"),
+]
+
+
+def _v2_ground_truth() -> list[tuple]:
+    rows = [list(r) for r in GROUND_TRUTH if r[0] != "NW-013"]                  # banding rule removed
+    for r in rows:
+        rid = r[0]
+        if rid == "NW-004":
+            r[2] = "For LTL/TL shipments the ASN must be received at least 4 hours before the delivery appointment."
+            r[4], r[6], r[8] = "4", "no later than 4 hours", "$300 per shipment"
+        elif rid == "NW-005":
+            r[8] = "$300 per shipment"
+        elif rid == "NW-010":
+            r[2], r[4], r[6] = "Carton weight must be between 1 and 45 lbs.", "1-45", "45 lbs"
+        elif rid == "NW-012":
+            r[7] = "3.3 Carton Construction"
+        elif rid == "NW-020":
+            r[6] = "2,000 lbs gross"
+        elif rid == "NW-026":
+            r[2], r[4], r[6] = ("LTL shipments must use XPO, Old Dominion, or Saia.", "XPO|Old Dominion|Saia",
+                                "XPO, Old Dominion, Saia")
+    rows += [
+        ["NW-034", "carton", "Inner packs must contain a uniform quantity of units.", "", "", "",
+         "uniform quantity of units", "3.2 Inner Packs", "", "added in v2025.2; not a shipment attribute"],
+        ["NW-035", "documentation", "Shipments containing hazardous materials must include a Safety Data Sheet.",
+         "required document", "SDS", "", "Safety Data Sheet", "8 Documentation", "",
+         "added in v2025.2; conditional on hazmat (product_type)"],
+        ["NW-036", "pallet", "Pallets to DC 6040 must not exceed 64 inches in height.", "pallet max height (DC 6040)",
+         "64", "in", None, "Appendix B DC-Specific Requirements", "$75 per pallet", "added in v2025.2; scanned page"],
+    ]
+    return [tuple(r) for r in rows]
+
+
+@dataclass
+class Variant:
+    version: str
+    effective: str        # PDF metadata date
+    cover: str
+    body: str
+    scan: str
+    ground_truth: list[tuple]
+
+
+def variant(version: str) -> Variant:
+    if version == "v2025.1":
+        return Variant(version, "D:20250301000000", COVER_HTML, BODY_HTML, SCAN_HTML, GROUND_TRUTH)
+    if version == "v2025.2":
+        parts = {"cover": COVER_HTML, "body": BODY_HTML, "scan": SCAN_HTML}
+        for where, old, new in V2_HTML_EDITS:
+            if old not in parts[where]:
+                raise SystemExit(f"v2 edit target not found in {where}: {old[:60]!r}")
+            parts[where] = parts[where].replace(old, new, 1)
+        return Variant(version, "D:20250901000000", parts["cover"], parts["body"], parts["scan"], _v2_ground_truth())
+    raise SystemExit(f"unknown version {version}")
+
+
+def build(tmp_dir: Path, v: Variant) -> pymupdf.Document:
     cover_pdf, main_pdf, scan_pdf = (tmp_dir / f"{n}.pdf" for n in ("cover", "main", "scan"))
-    _render_story(COVER_HTML, cover_pdf)
-    _render_story(BODY_HTML, main_pdf)
-    _render_story(SCAN_HTML, scan_pdf)
+    _render_story(v.cover, cover_pdf)
+    _render_story(v.body, main_pdf)
+    _render_story(v.scan, scan_pdf)
 
     doc = pymupdf.open(cover_pdf)
     doc.insert_pdf(pymupdf.open(main_pdf))
@@ -239,16 +318,16 @@ def build(tmp_dir: Path) -> pymupdf.Document:
     for i, page in enumerate(doc):
         if i == 0:
             continue  # cover has no running header
-        page.insert_text((60, 45), HEADER, fontsize=8, fontname="helv")
+        page.insert_text((60, 45), HEADER.format(version=v.version), fontsize=8, fontname="helv")
         page.insert_text((60, LETTER.height - 36), f"Page {i + 1} of {total}", fontsize=8, fontname="helv")
     return doc
 
 
-def locate_pages(doc: pymupdf.Document) -> dict[str, int]:
+def locate_pages(doc: pymupdf.Document, ground_truth: list[tuple]) -> dict[str, int]:
     """Find the page of each ground-truth anchor; fail loudly if an anchor is missing."""
     scan_page = doc.page_count  # appendix B is the last page
     pages: dict[str, int] = {}
-    for row in GROUND_TRUTH:
+    for row in ground_truth:
         rule_id, anchor = row[0], row[6]
         if anchor is None:
             pages[rule_id] = scan_page
@@ -262,28 +341,36 @@ def locate_pages(doc: pymupdf.Document) -> dict[str, int]:
     return pages
 
 
-def main() -> None:
+def build_version(version: str) -> None:
     import tempfile
 
-    GUIDE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    GT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    v = variant(version)
+    guide_path = ROOT / f"data/sample/guides/northwind/{version}.pdf"
+    gt_path = ROOT / f"data/sample/ground_truth/northwind_{version}.csv"
+    guide_path.parent.mkdir(parents=True, exist_ok=True)
+    gt_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        doc = build(Path(tmp))
-        doc.set_metadata({"title": "Northwind Retail Co. Vendor Routing & Compliance Guide v2025.1 (synthetic)",
-                          "creationDate": "D:20250301000000", "modDate": "D:20250301000000"})
-        doc.save(GUIDE_PATH, garbage=4, deflate=True, no_new_id=True)
-        pages = locate_pages(doc)
+        doc = build(Path(tmp), v)
+        doc.set_metadata({"title": f"Northwind Retail Co. Vendor Routing & Compliance Guide {version} (synthetic)",
+                          "creationDate": v.effective, "modDate": v.effective})
+        doc.save(guide_path, garbage=4, deflate=True, no_new_id=True)
+        pages = locate_pages(doc, v.ground_truth)
 
-    with GT_PATH.open("w", newline="") as f:
+    with gt_path.open("w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["rule_id", "category", "requirement", "parameter_name", "parameter_value",
                     "unit", "page", "section", "chargeback", "notes"])
-        for rid, cat, req, pname, pval, unit, _anchor, section, cb, notes in GROUND_TRUTH:
+        for rid, cat, req, pname, pval, unit, _anchor, section, cb, notes in v.ground_truth:
             w.writerow([rid, cat, req, pname, pval, unit, pages[rid], section, cb, notes])
 
-    n_rules = len({r[0] for r in GROUND_TRUTH})
-    print(f"wrote {GUIDE_PATH.relative_to(ROOT)} ({doc.page_count} pages)")
-    print(f"wrote {GT_PATH.relative_to(ROOT)} ({n_rules} rules, {len(GROUND_TRUTH)} rows)")
+    n_rules = len({r[0] for r in v.ground_truth})
+    print(f"wrote {guide_path.relative_to(ROOT)} ({doc.page_count} pages)")
+    print(f"wrote {gt_path.relative_to(ROOT)} ({n_rules} rules, {len(v.ground_truth)} rows)")
+
+
+def main() -> None:
+    for version in ("v2025.1", "v2025.2"):
+        build_version(version)
 
 
 if __name__ == "__main__":

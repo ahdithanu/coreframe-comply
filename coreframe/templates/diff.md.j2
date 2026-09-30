@@ -1,0 +1,41 @@
+# {{ d.retailer | title }} routing guide: {{ d.old_version }} → {{ d.new_version }}
+
+**{{ changed | length }} changed · {{ added | length }} added · {{ removed | length }} removed** · {{ unchanged | length }} unchanged.
+{{ checkable_changes }} of these affect automatic checks; the rest need a human to update SOPs.
+{% if changed %}
+
+## Changed
+
+| Rule | What changed | {{ d.old_version }} | {{ d.new_version }} | Impact |
+|---|---|---|---|---|
+{% for e in changed %}
+{% for c in e.changes %}
+| {% if loop.first %}**{{ e.new.requirement }}**<br>`{{ e.old.rule_id }}` → `{{ e.new.rule_id }}`<br>{{ cite(e.old) }} → {{ cite(e.new) }}{% endif %} | {{ c.field }} | {{ c.old }} | {{ c.new }} | {{ c.direction or "" }} |
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% if added %}
+
+## Added in {{ d.new_version }}
+
+{% for e in added %}
+- **{{ e.new.requirement }}**{% if e.new.status.value == "needs_human" %} _(needs human review)_{% endif %} `{{ e.new.rule_id }}` · {{ cite(e.new) }}{% if e.new.chargeback %} · chargeback {{ e.new.chargeback.text }}{% endif %}
+
+{% endfor %}
+{% endif %}
+{% if removed %}
+
+## Removed since {{ d.old_version }}
+
+{% for e in removed %}
+- ~~{{ e.old.requirement }}~~ `{{ e.old.rule_id }}` · was {{ cite(e.old) }}
+{% endfor %}
+{% endif %}
+{% if noted %}
+
+## Unchanged, but moved or reworded
+
+{% for e in noted %}
+- {{ e.new.requirement }}: {{ e.notes | join("; ") }}
+{% endfor %}
+{% endif %}

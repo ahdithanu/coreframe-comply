@@ -6,7 +6,7 @@ Coreframe Comply turns a routing guide into structured requirements with citatio
 
 **Design principle: the LLM extracts, code checks.** The model reads the guide and produces typed rules with page citations. A deterministic rule engine decides pass/fail. If the model can't map a rule to a checkable shipment field, the rule is marked `needs_human` and shown for review. The model never guesses a pass/fail.
 
-> Work in progress: v0 is being built in phases. Phases 1–3 (ingestion, extraction, deterministic checker) are done. Phase 2 has not yet been run against the live model.
+> Work in progress: v0 is being built in phases. Phases 1–4 (ingestion, extraction, deterministic checker, version diff) are done. Phase 2 has not yet been run against the live model.
 
 ## Quick start
 
@@ -29,6 +29,15 @@ Check a shipment (exits 1 if anything fails, so it can gate a WMS or CI step):
 The report lists each violation with expected vs. actual values, the failing carton or pallet, the page citation and the estimated chargeback, sorted by exposure. Each chargeback-schedule line is billed once, even when several rules map to it. Missing data is flagged for review rather than passed, and rules that couldn't be turned into checks are listed for human review. See [the demo report](data/sample/reports/DEMO-LTL-6012.check.md).
 
 `coreframe synth --rules <rules.json>` generates compliant shipments for every shipment type and DC the rules mention, then seeds one known violation per checkable parameter, with labels. `data/sample/rules/northwind_v2025.1.reference.json` is a hand-written reference rule set, so checker quality can be measured separately from extraction quality.
+
+Compare two versions of a retailer's guide:
+
+```bash
+.venv/bin/python -m coreframe diff --old data/sample/rules/northwind_v2025.1.reference.json \
+    --new data/sample/rules/northwind_v2025.2.reference.json
+```
+
+Rules are matched by category, the fields they check, their conditions, and requirement text with numbers masked. Rules without checks are matched on their cited source sentence, so two extraction runs that word a rule differently don't produce false changes. Each change shows old and new values side by side with citations to both versions, and is labeled stricter, looser or higher fee. A renumbered section or a reworded sentence with the same limits is reported as unchanged, with a note. See [the sample diff](data/sample/reports/diff_northwind_v2025.1_v2025.2.md). The sample includes a second guide version (`v2025.2`) with planted edits for testing this.
 
 Useful flags: `--model` (default `claude-sonnet-5`, or set `COREFRAME_MODEL`), `--effort`, `--prompt` (versioned files in `prompts/`).
 

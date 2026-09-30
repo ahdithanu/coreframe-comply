@@ -5,14 +5,18 @@ shipment generator be tested and evaluated independently of extraction quality:
 checker bugs and extraction misses are different failure sources and should be
 measured separately.
 
-Every snippet is verified against the parsed page text at build time.
+Every snippet is verified against the parsed page text at build time, and each
+source's page is located from the text (so layout shifts between versions are
+handled). v2025.2 is v2025.1 plus the edits in v2_rules(), mirroring
+V2_HTML_EDITS in build_sample_guide.py.
 
-Usage:  python scripts/build_reference_rules.py
-Writes: data/sample/rules/northwind_v2025.1.reference.json
+Usage:  python scripts/build_reference_rules.py          # both versions
+Writes: data/sample/rules/northwind_<version>.reference.json
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from datetime import datetime, timezone
@@ -25,8 +29,6 @@ from coreframe.extract import _norm, assign_ids, page_texts  # noqa: E402
 from coreframe.ingest import parse_guide  # noqa: E402
 from coreframe.schemas import Rule, RuleSet  # noqa: E402
 
-GUIDE = ROOT / "data/sample/guides/northwind/v2025.1.pdf"
-OUT = ROOT / "data/sample/rules/northwind_v2025.1.reference.json"
 
 LTL_TL = [{"field": "shipment_type", "operator": "in", "value": ["ltl", "tl"]}]
 PARCEL = [{"field": "shipment_type", "operator": "eq", "value": "parcel"}]
@@ -197,24 +199,80 @@ RULES = [
 ]
 
 
-def main() -> None:
-    guide = parse_guide(GUIDE, image_dir=ROOT / "data/sample/cache/pages")
+def _find(rules: list[dict], text: str) -> dict:
+    hits = [r for r in rules if text in r["requirement"]]
+    assert len(hits) == 1, (text, len(hits))
+    return hits[0]
+
+
+def v2_rules() -> list[dict]:
+    rules = copy.deepcopy(RULES)
+    r = _find(rules, "received at least 2 hours before")
+    r["requirement"] = r["requirement"].replace("2 hours", "4 hours")
+    r["parameters"][0]["value"] = 4
+    r["sources"][0]["snippet"] = r["sources"][0]["snippet"].replace("2 hours", "4 hours")
+    r["chargeback"] = cb(300.0, "per_shipment", "$300 per shipment")
+    _find(rules, "within 60 minutes after")["chargeback"] = cb(300.0, "per_shipment", "$300 per shipment")
+    r = _find(rules, "between 1 and 50 lbs")
+    r["requirement"] = "Carton weight must be between 1 and 45 lbs."
+    r["parameters"][0]["value"] = [1, 45]
+    r["sources"][0]["snippet"] = "Weight 1 lb 45 lbs"
+    rules.remove(_find(rules, "banded or strapped"))
+    _find(rules, "burst strength")["sources"][0]["section"] = "3.3 Carton Construction"
+    _find(rules, "Gross pallet weight")["sources"][0]["snippet"] = "Pallets may not exceed 2,000 lbs gross weight."
+    r = _find(rules, "LTL shipments must use")
+    r["requirement"] = "LTL shipments must use XPO, Old Dominion, or Saia."
+    r["parameters"][0]["value"] = ["XPO", "Old Dominion", "Saia"]
+    r["sources"][0]["snippet"] = "LTL XPO, Old Dominion, Saia"
+    rules += [
+        human("carton", "Inner packs must contain a uniform quantity of units.",
+              src(3, "3.2 Inner Packs", "Inner packs must contain a uniform quantity of units."),
+              "Pack contents aren't recorded on the shipment."),
+        checked("documentation", "Shipments containing hazardous materials must include a Safety Data Sheet (SDS).",
+                [p("SDS included", "shipment.documents", "in", ["SDS"])],
+                src(4, S8, "Shipments containing hazardous materials must include a Safety Data Sheet (SDS)."),
+                applies_to=[{"field": "product_type", "operator": "eq", "value": "hazmat"}], confidence="med",
+                review_note="Assumes hazmat shipments are marked product_type = hazmat."),
+        checked("pallet", "Pallets shipped to DC 6040 must not exceed 64 inches in height.",
+                [p("pallet max height (DC 6040)", "pallets[].height_in", "lte", 64, "in")],
+                src(6, SB, "Maximum pallet height is 64 inches."),
+                applies_to=[{"field": "destination_dc", "operator": "eq", "value": "6040"}], chargeback=CB_PALLET),
+    ]
+    return rules
+
+
+def build(version: str) -> None:
+    guide_path = ROOT / f"data/sample/guides/northwind/{version}.pdf"
+    out = ROOT / f"data/sample/rules/northwind_{version}.reference.json"
+    raw = RULES if version == "v2025.1" else v2_rules()
+    guide = parse_guide(guide_path, image_dir=ROOT / "data/sample/cache/pages")
     texts = page_texts(guide)
-    rules = [Rule(rule_id=f"tmp{i}", retailer="northwind", guide_version="v2025.1", **r) for i, r in enumerate(RULES)]
+    rules = [Rule(rule_id=f"tmp{i}", retailer="northwind", guide_version=version, **r) for i, r in enumerate(raw)]
     for r in rules:
         for s in r.sources:
-            page = texts[s.page]
-            s.verified = (_norm(s.snippet) in page) if page else None
-            if s.verified is False:
-                raise SystemExit(f"snippet not on page {s.page}: {s.snippet!r}")
-    assign_ids(rules, "northwind", "v2025.1")
-    rs = RuleSet(retailer="northwind", guide_version="v2025.1", guide_sha256=guide.sha256,
+            if texts.get(s.page) and _norm(s.snippet) in texts[s.page]:
+                s.verified = True
+                continue
+            hits = [n for n, t in texts.items() if t and _norm(s.snippet) in t]
+            if hits:
+                s.page, s.verified = hits[0], True
+            elif not texts.get(s.page):
+                s.verified = None  # image-only page: can't be text-verified
+            else:
+                raise SystemExit(f"{version}: snippet not found in the guide: {s.snippet!r}")
+    assign_ids(rules, "northwind", version)
+    rs = RuleSet(retailer="northwind", guide_version=version, guide_sha256=guide.sha256,
                  prompt_version="reference", model="human",
                  extracted_at=datetime(2026, 9, 30, tzinfo=timezone.utc), rules=rules)
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(rs.model_dump(mode="json"), indent=2) + "\n")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(rs.model_dump(mode="json"), indent=2) + "\n")
     n_param = sum(r.status.value == "parameterized" for r in rules)
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(rules)} rules ({n_param} parameterized, {len(rules) - n_param} needs_human)")
+    print(f"wrote {out.relative_to(ROOT)}: {len(rules)} rules ({n_param} parameterized, {len(rules) - n_param} needs_human)")
+
+
+def main() -> None:
+    for version in ("v2025.1", "v2025.2"):
+        build(version)
 
 
 if __name__ == "__main__":

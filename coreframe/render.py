@@ -116,3 +116,21 @@ def write_check_report(report, shipment, out_base: Path) -> tuple[Path, Path]:
     md.write_text(env.get_template("check.md.j2").render(**ctx))
     html.write_text(env.get_template("check.html.j2").render(**ctx))
     return md, html
+
+
+def _cite(rule) -> str:
+    s = rule.sources[0]
+    return f"p. {s.page}, {s.section}"
+
+
+def write_diff_report(d, out_base: Path) -> tuple[Path, Path]:
+    unchanged = d.of("unchanged")
+    ctx = {"d": d, "changed": d.of("changed"), "added": d.of("added"), "removed": d.of("removed"),
+           "unchanged": unchanged, "noted": [e for e in unchanged if e.notes], "cite": _cite,
+           "checkable_changes": sum(e.checkable for e in d.entries if e.kind != "unchanged")}
+    env = _env()
+    out_base.parent.mkdir(parents=True, exist_ok=True)
+    md, html = out_base.parent / f"{out_base.name}.md", out_base.parent / f"{out_base.name}.html"
+    md.write_text(env.get_template("diff.md.j2").render(**ctx))
+    html.write_text(env.get_template("diff.html.j2").render(**ctx))
+    return md, html

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ d.retailer | title }} {{ d.old_version }} to {{ d.new_version }}</title>
+<style>
+:root { --bg:#fbfbfa; --panel:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e4e2; --chip:#f1f1ef;
+  --strict:#b3261e; --strict-bg:#fdecea; --loose:#1b7a3a; --loose-bg:#e7f5ec; --neutral:#1f5fbf; --neutral-bg:#e8f0fc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141416; --panel:#1c1c1f; --ink:#ececef;
+  --muted:#9a9aa1; --line:#2c2c31; --chip:#26262a; --strict:#ff8a80; --strict-bg:#3a1714; --loose:#6fd48f; --loose-bg:#12301d;
+  --neutral:#7fb0ff; --neutral-bg:#16243a; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+main { max-width:960px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:24px; margin:0 0 4px; } .meta { color:var(--muted); font-size:13px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:20px 0; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+.stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; } .stat span { color:var(--muted); font-size:12px; }
+h2 { font-size:16px; margin:28px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.req { font-weight:600; margin:0 0 4px; } .cite { color:var(--muted); font-size:13px; margin-bottom:10px; }
+.row { display:grid; grid-template-columns:150px 1fr 1fr; gap:8px 12px; align-items:start; font-size:14px; padding:6px 0; border-top:1px solid var(--line); }
+.row .h { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+.old { text-decoration:line-through; text-decoration-color:var(--muted); color:var(--muted); }
+code { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--chip); padding:1px 5px; border-radius:4px; overflow-wrap:anywhere; }
+.pill { display:inline-block; font-size:12px; border-radius:999px; padding:1px 9px; margin-left:6px; font-weight:600; }
+.stricter,.higher { background:var(--strict-bg); color:var(--strict); } .looser,.lower { background:var(--loose-bg); color:var(--loose); }
+.other { background:var(--neutral-bg); color:var(--neutral); }
+.tag { font-size:12px; color:var(--muted); background:var(--chip); border-radius:6px; padding:1px 8px; margin-left:6px; }
+ul.plain { padding-left:18px; font-size:14px; } details summary { cursor:pointer; color:var(--muted); }
+@media (max-width:600px) { .row { grid-template-columns:1fr; } .row .h { display:none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>{{ d.retailer | title }} routing guide: {{ d.old_version }} → {{ d.new_version }}</h1>
+<div class="meta">{{ checkable_changes }} change{{ "" if checkable_changes == 1 else "s" }} affect automatic checks; the rest need a human to update SOPs.</div>
+<div class="stats">
+  <div class="stat"><b>{{ changed | length }}</b><span>changed</span></div>
+  <div class="stat"><b>{{ added | length }}</b><span>added</span></div>
+  <div class="stat"><b>{{ removed | length }}</b><span>removed</span></div>
+  <div class="stat"><b>{{ unchanged | length }}</b><span>unchanged</span></div>
+</div>
+
+{% if changed %}<h2>Changed</h2>
+{% for e in changed %}
+<div class="card">
+  <p class="req">{{ e.new.requirement }}{% if not e.checkable %}<span class="tag">needs human review</span>{% endif %}</p>
+  <div class="cite">{{ d.old_version }}: {{ cite(e.old) }} · {{ d.new_version }}: {{ cite(e.new) }}</div>
+  <div class="row"><span class="h">Field</span><span class="h">{{ d.old_version }}</span><span class="h">{{ d.new_version }}</span></div>
+  {% for c in e.changes %}
+  <div class="row"><span>{{ c.field }}{% if c.direction %}<span class="pill {{ c.direction.split()[0] if c.direction.split()[0] in ('stricter','looser','higher','lower') else 'other' }}">{{ c.direction }}</span>{% endif %}</span>
+    <span class="old">{{ c.old }}</span><span>{{ c.new }}</span></div>
+  {% endfor %}
+</div>
+{% endfor %}{% endif %}
+
+{% if added %}<h2>Added in {{ d.new_version }}</h2>
+{% for e in added %}
+<div class="card"><p class="req">{{ e.new.requirement }}{% if e.new.status.value == "needs_human" %}<span class="tag">needs human review</span>{% endif %}</p>
+<div class="cite">{{ cite(e.new) }}{% if e.new.chargeback %} · chargeback {{ e.new.chargeback.text }}{% endif %}</div>
+{% for p in e.new.parameters if p.target %}<code>{{ p | param }}</code> {% endfor %}</div>
+{% endfor %}{% endif %}
+
+{% if removed %}<h2>Removed since {{ d.old_version }}</h2>
+{% for e in removed %}
+<div class="card"><p class="req old">{{ e.old.requirement }}</p><div class="cite">was {{ cite(e.old) }}</div></div>
+{% endfor %}{% endif %}
+
+<details><summary>{{ unchanged | length }} unchanged{% if noted %} ({{ noted | length }} moved or reworded){% endif %}</summary>
+<ul class="plain">{% for e in unchanged %}<li>{{ e.new.requirement }}{% if e.notes %} <span class="tag">{{ e.notes | join("; ") }}</span>{% endif %}</li>{% endfor %}</ul>
+</details>
+</main>
+</body>
+</html>

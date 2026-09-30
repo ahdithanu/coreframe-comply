@@ -1,0 +1,37 @@
+rule_id,category,requirement,parameter_name,parameter_value,unit,page,section,chargeback,notes
+NW-001,chargeback_policy,Chargeback disputes must be submitted via the Vendor Portal within 30 days of the notice.,dispute window,30,days,2,1.2 Compliance Program,,not a shipment attribute
+NW-002,other,Merchandise must be packed to withstand normal handling in transit.,,,,2,1.2 Compliance Program,,needs_human: vague
+NW-003,asn_edi,An EDI 856 ASN must be transmitted for every shipment.,asn sent,true,,2,2.1 ASN Requirement,$500 per shipment,chargeback is in Section 9 (cross-reference)
+NW-004,asn_edi,For LTL/TL shipments the ASN must be received at least 4 hours before the delivery appointment.,asn lead time before appointment,4,hours,2,2.2 ASN Timing,$300 per shipment,conditional: LTL/TL
+NW-005,asn_edi,For parcel shipments the ASN must be transmitted within 60 minutes after tender to the carrier.,asn max delay after tender,60,minutes,2,2.2 ASN Timing,$300 per shipment,conditional: parcel; 'after' relation not expressible -> needs_human
+NW-006,asn_edi,Each carton in the ASN must have a unique SSCC-18 matching its label.,sscc present,true,,2,2.3 ASN Content,$5.00 per carton,overlaps NW-014
+NW-007,carton,Carton length must be between 6 and 24 inches.,carton length,6-24,in,2,3.1 Dimensions and Weight,$3.00 per carton,table
+NW-008,carton,Carton width must be between 4 and 18 inches.,carton width,4-18,in,2,3.1 Dimensions and Weight,$3.00 per carton,table
+NW-009,carton,Carton height must be between 2 and 18 inches.,carton height,2-18,in,2,3.1 Dimensions and Weight,$3.00 per carton,table
+NW-010,carton,Carton weight must be between 1 and 45 lbs.,carton weight,1-45,lbs,3,3.1 Dimensions and Weight,$3.00 per carton,table
+NW-011,carton,Parcel cartons must not exceed 35 lbs.,carton max weight (parcel),35,lbs,3,3.1 Dimensions and Weight,$3.00 per carton,conditional: parcel; supersedes NW-010
+NW-012,carton,Cartons must be corrugated with minimum 200 psi burst strength (ECT 32).,burst strength,200,psi,3,3.3 Carton Construction,,not a shipment attribute
+NW-014,labeling,Every carton must carry a 4x6 GS1-128 label with a scannable SSCC-18.,label type,GS1-128,,3,4.1 Carton Labels,"$2.50 per carton, $250 minimum",
+NW-014,labeling,Every carton must carry a 4x6 GS1-128 label with a scannable SSCC-18.,sscc present,true,,3,4.1 Carton Labels,"$2.50 per carton, $250 minimum",
+NW-015,labeling,"Carton label must be on the longest side, lower right, at least 1.25 in from any edge.",label position,long_side_lower_right,,3,4.1 Carton Labels,"$2.50 per carton, $250 minimum",edge distance not checkable
+NW-016,labeling,Labels must be legible and not over seams or covered with tape.,,,,3,4.1 Carton Labels,"$2.50 per carton, $250 minimum",needs_human
+NW-017,labeling,"Each pallet must carry two labels on adjacent sides, formatted per Section 4.1.",pallet label count,2,,3,4.2 Pallet Labels,,cross-reference to 4.1
+NW-018,pallet,LTL and TL shipments must use 40x48 GMA pallets.,pallet footprint,40x48,in,3,5 Pallet Requirements,$75 per pallet,conditional: LTL/TL
+NW-019,pallet,Pallet height must not exceed 72 inches including the pallet.,pallet max height,72,in,3,5 Pallet Requirements,$75 per pallet,metric equivalent also stated
+NW-020,pallet,"Gross pallet weight must not exceed 2,000 lbs.",pallet max weight,2000,lbs,3,5 Pallet Requirements,$75 per pallet,
+NW-021,pallet,Pallets must not be double-stacked when shipping to DC 6012 or DC 6031.,stacked,false,,3,5 Pallet Requirements,$75 per pallet,cross-reference into scanned Appendix B; conditional on DC
+NW-022,pallet,Pallets to DC 6012 must not exceed 60 inches in height.,pallet max height (DC 6012),60,in,6,Appendix B DC-Specific Requirements,$75 per pallet,scanned page; conditional on DC
+NW-023,appointment,DC 6031 accepts deliveries Monday through Friday only.,delivery weekdays,Mon-Fri,,6,Appendix B DC-Specific Requirements,,scanned page; conditional on DC
+NW-024,routing_carrier,Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.,routing lead time,3,business days,3,6.1 Routing Requests,,no routing-request field in Shipment
+NW-025,routing_carrier,Parcel shipments must use UPS or FedEx Ground.,carrier,UPS|FedEx Ground,,4,6.2 Approved Carriers,3% of invoice value,table; conditional: parcel
+NW-026,routing_carrier,"LTL shipments must use XPO, Old Dominion, or Saia.",carrier,XPO|Old Dominion|Saia,,4,6.2 Approved Carriers,3% of invoice value,table; conditional: LTL
+NW-027,routing_carrier,TL carriers are assigned by the Northwind Routing Portal.,,,,4,6.2 Approved Carriers,3% of invoice value,needs_human
+NW-028,appointment,LTL/TL deliveries require an appointment requested at least 48 hours before delivery.,appointment lead time,48,hours,4,7 Delivery Appointments,$150 per occurrence,conditional: LTL/TL; request time not in Shipment
+NW-029,appointment,Carriers more than 30 minutes late to the appointment will be refused.,max late arrival,30,minutes,4,7 Delivery Appointments,,arrival time not in Shipment
+NW-030,documentation,Each shipment must include a BOL referencing the Northwind PO number.,required document,BOL,,4,8 Documentation,$100 per shipment,
+NW-031,documentation,Each shipment must include a packing list.,required document,packing_list,,4,8 Documentation,$100 per shipment,
+NW-032,documentation,Shipments originating outside the US require a commercial invoice.,required document,commercial_invoice,,4,8 Documentation,,conditional on origin (not in Shipment)
+NW-033,chargeback_policy,Repeat violations of the same type within 90 days are charged at 150%.,repeat multiplier,150,%,4,9 Chargeback Schedule,,
+NW-034,carton,Inner packs must contain a uniform quantity of units.,,,,3,3.2 Inner Packs,,added in v2025.2; not a shipment attribute
+NW-035,documentation,Shipments containing hazardous materials must include a Safety Data Sheet.,required document,SDS,,4,8 Documentation,,added in v2025.2; conditional on hazmat (product_type)
+NW-036,pallet,Pallets to DC 6040 must not exceed 64 inches in height.,pallet max height (DC 6040),64,in,6,Appendix B DC-Specific Requirements,$75 per pallet,added in v2025.2; scanned page

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind v2025.1 to v2025.2</title>
+<style>
+:root { --bg:#fbfbfa; --panel:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e4e2; --chip:#f1f1ef;
+  --strict:#b3261e; --strict-bg:#fdecea; --loose:#1b7a3a; --loose-bg:#e7f5ec; --neutral:#1f5fbf; --neutral-bg:#e8f0fc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141416; --panel:#1c1c1f; --ink:#ececef;
+  --muted:#9a9aa1; --line:#2c2c31; --chip:#26262a; --strict:#ff8a80; --strict-bg:#3a1714; --loose:#6fd48f; --loose-bg:#12301d;
+  --neutral:#7fb0ff; --neutral-bg:#16243a; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+main { max-width:960px; margin:0 auto; padding:32px 16px 64px; }
+h1 { font-size:24px; margin:0 0 4px; } .meta { color:var(--muted); font-size:13px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:20px 0; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+.stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; } .stat span { color:var(--muted); font-size:12px; }
+h2 { font-size:16px; margin:28px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.req { font-weight:600; margin:0 0 4px; } .cite { color:var(--muted); font-size:13px; margin-bottom:10px; }
+.row { display:grid; grid-template-columns:150px 1fr 1fr; gap:8px 12px; align-items:start; font-size:14px; padding:6px 0; border-top:1px solid var(--line); }
+.row .h { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+.old { text-decoration:line-through; text-decoration-color:var(--muted); color:var(--muted); }
+code { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--chip); padding:1px 5px; border-radius:4px; overflow-wrap:anywhere; }
+.pill { display:inline-block; font-size:12px; border-radius:999px; padding:1px 9px; margin-left:6px; font-weight:600; }
+.stricter,.higher { background:var(--strict-bg); color:var(--strict); } .looser,.lower { background:var(--loose-bg); color:var(--loose); }
+.other { background:var(--neutral-bg); color:var(--neutral); }
+.tag { font-size:12px; color:var(--muted); background:var(--chip); border-radius:6px; padding:1px 8px; margin-left:6px; }
+ul.plain { padding-left:18px; font-size:14px; } details summary { cursor:pointer; color:var(--muted); }
+@media (max-width:600px) { .row { grid-template-columns:1fr; } .row .h { display:none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Northwind routing guide: v2025.1 → v2025.2</h1>
+<div class="meta">5 changes affect automatic checks; the rest need a human to update SOPs.</div>
+<div class="stats">
+  <div class="stat"><b>4</b><span>changed</span></div>
+  <div class="stat"><b>3</b><span>added</span></div>
+  <div class="stat"><b>1</b><span>removed</span></div>
+  <div class="stat"><b>29</b><span>unchanged</span></div>
+</div>
+
+<h2>Changed</h2>
+<div class="card">
+  <p class="req">For LTL and TL shipments, the ASN must be received at least 4 hours before the delivery appointment.</p>
+  <div class="cite">v2025.1: p. 2, 2.2 ASN Timing · v2025.2: p. 2, 2.2 ASN Timing</div>
+  <div class="row"><span class="h">Field</span><span class="h">v2025.1</span><span class="h">v2025.2</span></div>
+  <div class="row"><span>shipment.asn_sent_at<span class="pill stricter">stricter</span></span>
+    <span class="old">shipment.asn_sent_at at least 2 hours before shipment.appointment_time</span><span>shipment.asn_sent_at at least 4 hours before shipment.appointment_time</span></div>
+  <div class="row"><span>chargeback<span class="pill higher">higher fee</span></span>
+    <span class="old">$250 per shipment</span><span>$300 per shipment</span></div>
+</div>
+<div class="card">
+  <p class="req">Carton weight must be between 1 and 45 lbs.</p>
+  <div class="cite">v2025.1: p. 3, 3.1 Dimensions and Weight · v2025.2: p. 3, 3.1 Dimensions and Weight</div>
+  <div class="row"><span class="h">Field</span><span class="h">v2025.1</span><span class="h">v2025.2</span></div>
+  <div class="row"><span>cartons[].weight_lbs<span class="pill stricter">stricter</span></span>
+    <span class="old">cartons[].weight_lbs between 1 and 50 lbs</span><span>cartons[].weight_lbs between 1 and 45 lbs</span></div>
+</div>
+<div class="card">
+  <p class="req">LTL shipments must use XPO, Old Dominion, or Saia.</p>
+  <div class="cite">v2025.1: p. 4, 6.2 Approved Carriers · v2025.2: p. 4, 6.2 Approved Carriers</div>
+  <div class="row"><span class="h">Field</span><span class="h">v2025.1</span><span class="h">v2025.2</span></div>
+  <div class="row"><span>shipment.carrier<span class="pill other">changed</span></span>
+    <span class="old">shipment.carrier in XPO, Old Dominion, Estes</span><span>shipment.carrier in XPO, Old Dominion, Saia (-Estes, +Saia)</span></div>
+</div>
+<div class="card">
+  <p class="req">For parcel shipments, the ASN must be transmitted within 60 minutes after carrier tender.<span class="tag">needs human review</span></p>
+  <div class="cite">v2025.1: p. 2, 2.2 ASN Timing · v2025.2: p. 2, 2.2 ASN Timing</div>
+  <div class="row"><span class="h">Field</span><span class="h">v2025.1</span><span class="h">v2025.2</span></div>
+  <div class="row"><span>chargeback<span class="pill higher">higher fee</span></span>
+    <span class="old">$250 per shipment</span><span>$300 per shipment</span></div>
+</div>
+
+<h2>Added in v2025.2</h2>
+<div class="card"><p class="req">Shipments containing hazardous materials must include a Safety Data Sheet (SDS).</p>
+<div class="cite">p. 4, 8 Documentation</div>
+<code>shipment.documents in SDS</code> </div>
+<div class="card"><p class="req">Pallets shipped to DC 6040 must not exceed 64 inches in height.</p>
+<div class="cite">p. 6, Appendix B DC-Specific Requirements · chargeback $75 per pallet</div>
+<code>pallets[].height_in ≤ 64 in</code> </div>
+<div class="card"><p class="req">Inner packs must contain a uniform quantity of units.<span class="tag">needs human review</span></p>
+<div class="cite">p. 3, 3.2 Inner Packs</div>
+</div>
+
+<h2>Removed since v2025.1</h2>
+<div class="card"><p class="req old">Individual cartons must not be banded or strapped.</p><div class="cite">was p. 3, 3.2 Carton Construction</div></div>
+
+<details><summary>29 unchanged (2 moved or reworded)</summary>
+<ul class="plain"><li>LTL and TL deliveries require a scheduled appointment.</li><li>An EDI 856 ASN must be transmitted for every shipment.</li><li>Each carton in the ASN must carry an SSCC-18 matching its label.</li><li>Carton length must be between 6 and 24 inches.</li><li>Carton width must be between 4 and 18 inches.</li><li>Carton height must be between 2 and 18 inches.</li><li>For parcel shipments, cartons must not exceed 35 lbs.</li><li>Each shipment must include a Bill of Lading referencing the Northwind PO number.</li><li>Each shipment must include a packing list.</li><li>Every carton must carry a 4 x 6 in GS1-128 label with a scannable SSCC-18 barcode.</li><li>The carton label must be on the longest side, in the lower right corner.</li><li>LTL and TL shipments must use 40 x 48 in GMA pallets.</li><li>Pallet height must not exceed 72 inches including the pallet.</li><li>Gross pallet weight must not exceed 2,000 lbs. <span class="tag">source sentence reworded</span></li><li>Pallets shipped to DC 6012 or DC 6031 must not be double-stacked.</li><li>Pallets shipped to DC 6012 must not exceed 60 inches in height.</li><li>Parcel shipments must use UPS or FedEx Ground.</li><li>DC 6031 accepts deliveries Monday through Friday only.</li><li>Appointments must be requested at least 48 hours before the requested delivery time.</li><li>Carriers arriving more than 30 minutes after the appointment time will be refused.</li><li>Cartons must be corrugated with a minimum burst strength of 200 psi (ECT 32). <span class="tag">moved: p. 3 3.2 Carton Construction → p. 3 3.3 Carton Construction</span></li><li>Chargeback disputes must be submitted through the Vendor Portal within 30 days of the notice.</li><li>Repeat violations of the same type within 90 days are charged at 150% of the listed amount.</li><li>Shipments originating outside the United States require a commercial invoice.</li><li>Labels must be legible and not placed over seams or covered with tape.</li><li>Each pallet must carry two labels, formatted per Section 4.1, on two adjacent sides.</li><li>Merchandise must be packed to withstand normal handling in transit.</li><li>Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.</li><li>TL carriers are assigned by the Northwind Routing Portal.</li></ul>
+</details>
+</main>
+</body>
+</html>

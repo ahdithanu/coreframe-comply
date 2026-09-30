@@ -169,6 +169,35 @@ def cmd_synth(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_diff(args: argparse.Namespace) -> int:
+    from coreframe.diff import diff
+    from coreframe.render import write_diff_report
+    from coreframe.schemas import RuleSet
+
+    old = RuleSet.model_validate_json(args.old.read_text())
+    new = RuleSet.model_validate_json(args.new.read_text())
+    d = diff(old, new)
+    out = args.out or _rules_root(args.new) / "reports" / f"diff_{new.retailer}_{old.guide_version}_{new.guide_version}"
+    md, html = write_diff_report(d, out)
+    print(f"{new.retailer} {old.guide_version} -> {new.guide_version}: {len(d.of('changed'))} changed, "
+          f"{len(d.of('added'))} added, {len(d.of('removed'))} removed, {len(d.of('unchanged'))} unchanged")
+    for e in d.of("changed"):
+        print(f"  CHANGED  {e.new.requirement}")
+        for c in e.changes:
+            print(f"           {c.field}: {c.old}  ->  {c.new}" + (f"  [{c.direction}]" if c.direction else ""))
+    for e in d.of("added"):
+        s = e.new.sources[0]
+        print(f"  ADDED    {e.new.requirement}  [p.{s.page} {s.section}]")
+    for e in d.of("removed"):
+        s = e.old.sources[0]
+        print(f"  REMOVED  {e.old.requirement}  [was p.{s.page} {s.section}]")
+    for e in d.of("unchanged"):
+        if e.notes:
+            print(f"  same     {e.new.requirement}  ({'; '.join(e.notes)})")
+    print(f"wrote {md}\n      {html}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="coreframe")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -199,6 +228,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--rules", type=Path, required=True)
     p.add_argument("--out", type=Path)
     p.set_defaults(func=cmd_synth)
+
+    p = sub.add_parser("diff", help="compare rule sets from two versions of the same retailer's guide")
+    p.add_argument("--old", type=Path, required=True)
+    p.add_argument("--new", type=Path, required=True)
+    p.add_argument("--out", type=Path, help="report path without extension")
+    p.set_defaults(func=cmd_diff)
 
     args = parser.parse_args(argv)
     return args.func(args)

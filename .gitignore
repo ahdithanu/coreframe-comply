@@ -6,6 +6,7 @@ data/*
 data/sample/synthetic/
 data/sample/reports/*
 !data/sample/reports/DEMO-*
+!data/sample/reports/diff_*
 
 .venv/
 __pycache__/
