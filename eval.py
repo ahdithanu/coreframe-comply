@@ -75,7 +75,13 @@ def main(argv: list[str] | None = None) -> int:
             skipped.append(f"{name} (no ground truth at {gt_path})")
             continue
         if args.reextract and g.get("pdf") and Path(g["pdf"]).exists():
-            reextract(g, llm_args)
+            from coreframe.llm import CacheMiss
+            try:
+                reextract(g, llm_args)
+            except CacheMiss:
+                skipped.append(f"{name} (no cached model responses for the current prompt; run "
+                               f"`python -m coreframe extract --guide {g['pdf']}` and commit the cache)")
+                continue
         if not rules_path.exists():
             skipped.append(f"{name} (no extracted rules at {rules_path}; run `python -m coreframe extract`)")
             continue
