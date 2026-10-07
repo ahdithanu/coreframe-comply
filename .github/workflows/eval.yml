@@ -1,0 +1,38 @@
+name: eval-gate
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Is there a cached extraction to evaluate?
+        id: cache
+        run: |
+          if [ -d data/sample/cache/llm ] && [ -n "$(ls -A data/sample/cache/llm 2>/dev/null)" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Eval gate NOT run: no cached model responses are committed yet (data/sample/cache/llm)."
+            echo "## Eval gate not run" >> "$GITHUB_STEP_SUMMARY"
+            echo "No cached extraction is committed, so nothing was evaluated. This is not a pass." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: A release tag requires a real eval
+        if: steps.cache.outputs.present == 'false' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "::error::Refusing to release without an eval run."
+          exit 1
+      # Re-derives the rules from the cached responses with the current code and prompt, then
+      # scores them. A prompt change without a fresh cached run fails here (cache miss).
+      - name: Eval on cached responses
+        if: steps.cache.outputs.present == 'true'
+        run: python eval.py --reextract --offline
+      - name: Publish report
+        if: always() && steps.cache.outputs.present == 'true'
+        run: cat eval_report.md >> "$GITHUB_STEP_SUMMARY"

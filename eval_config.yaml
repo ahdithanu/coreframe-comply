@@ -1,0 +1,27 @@
+# Release gate. `python eval.py` exits nonzero if any threshold is missed.
+# Thresholds are PLACEHOLDERS until there are real results to calibrate against.
+thresholds:
+  recall: 0.85               # ground-truth rules found (confirmed matches only)
+  precision: 0.90            # extracted rules that match a ground-truth rule
+  parameter_accuracy: 0.90   # value AND unit correct, on matched rules
+  catch_rate: 0.95           # seeded violations the checker flags
+  # max_false_positive_rate: 0.02
+
+# Proposed matches must be confirmed by a person before they count.
+# While any proposal is unconfirmed the gate fails.
+require_confirmed_matches: true
+matcher: llm                 # llm | heuristic (heuristic needs no API access)
+
+guides:
+  - name: northwind_v2025.1
+    pdf: data/sample/guides/northwind/v2025.1.pdf
+    rules: data/sample/rules/northwind_v2025.1.json
+    ground_truth: data/sample/ground_truth/northwind_v2025.1.csv
+    reference_rules: data/sample/rules/northwind_v2025.1.reference.json
+  - name: northwind_v2025.2
+    pdf: data/sample/guides/northwind/v2025.2.pdf
+    rules: data/sample/rules/northwind_v2025.2.json
+    ground_truth: data/sample/ground_truth/northwind_v2025.2.csv
+    reference_rules: data/sample/rules/northwind_v2025.2.reference.json
+  # Real guides live under data/ (gitignored). Add them here; entries whose files are
+  # absent on this machine are skipped and listed in the report.

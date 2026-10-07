@@ -142,7 +142,16 @@
       "guide_version": "v2025.1",
       "category": "asn_edi",
       "requirement": "For parcel shipments, the ASN must be transmitted within 60 minutes after carrier tender.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "ASN max delay after tender",
+          "target": null,
+          "operator": "lte",
+          "value": 60,
+          "unit": "minutes",
+          "reference": null
+        }
+      ],
       "applies_to": [
         {
           "field": "shipment_type",
@@ -557,7 +566,16 @@
       "guide_version": "v2025.1",
       "category": "labeling",
       "requirement": "Each pallet must carry two labels, formatted per Section 4.1, on two adjacent sides.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "pallet label count",
+          "target": null,
+          "operator": "eq",
+          "value": 2,
+          "unit": null,
+          "reference": null
+        }
+      ],
       "applies_to": "all",
       "chargeback": null,
       "sources": [
@@ -783,7 +801,22 @@
       "guide_version": "v2025.1",
       "category": "appointment",
       "requirement": "DC 6031 accepts deliveries Monday through Friday only.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "delivery weekdays",
+          "target": null,
+          "operator": "in",
+          "value": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
       "applies_to": [
         {
           "field": "destination_dc",
@@ -810,7 +843,16 @@
       "guide_version": "v2025.1",
       "category": "routing_carrier",
       "requirement": "Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "routing lead time",
+          "target": null,
+          "operator": "gte",
+          "value": 3,
+          "unit": "business days",
+          "reference": null
+        }
+      ],
       "applies_to": "all",
       "chargeback": null,
       "sources": [
@@ -1035,7 +1077,16 @@
       "guide_version": "v2025.1",
       "category": "appointment",
       "requirement": "Carriers arriving more than 30 minutes after the appointment time will be refused.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "max late arrival",
+          "target": null,
+          "operator": "lte",
+          "value": 30,
+          "unit": "minutes",
+          "reference": null
+        }
+      ],
       "applies_to": [
         {
           "field": "shipment_type",
@@ -1139,7 +1190,18 @@
       "guide_version": "v2025.1",
       "category": "documentation",
       "requirement": "Shipments originating outside the United States require a commercial invoice.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "commercial invoice included",
+          "target": "shipment.documents",
+          "operator": "in",
+          "value": [
+            "commercial_invoice"
+          ],
+          "unit": null,
+          "reference": null
+        }
+      ],
       "applies_to": "all",
       "chargeback": null,
       "sources": [
@@ -1160,7 +1222,16 @@
       "guide_version": "v2025.1",
       "category": "chargeback_policy",
       "requirement": "Repeat violations of the same type within 90 days are charged at 150% of the listed amount.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "repeat multiplier",
+          "target": null,
+          "operator": "eq",
+          "value": 150,
+          "unit": "%",
+          "reference": null
+        }
+      ],
       "applies_to": "all",
       "chargeback": null,
       "sources": [

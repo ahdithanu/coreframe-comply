@@ -22,7 +22,7 @@ NW-019,pallet,Pallet height must not exceed 72 inches including the pallet.,pall
 NW-020,pallet,"Gross pallet weight must not exceed 2,000 lbs.",pallet max weight,2000,lbs,3,5 Pallet Requirements,$75 per pallet,
 NW-021,pallet,Pallets must not be double-stacked when shipping to DC 6012 or DC 6031.,stacked,false,,3,5 Pallet Requirements,$75 per pallet,cross-reference into scanned Appendix B; conditional on DC
 NW-022,pallet,Pallets to DC 6012 must not exceed 60 inches in height.,pallet max height (DC 6012),60,in,6,Appendix B DC-Specific Requirements,$75 per pallet,scanned page; conditional on DC
-NW-023,appointment,DC 6031 accepts deliveries Monday through Friday only.,delivery weekdays,Mon-Fri,,6,Appendix B DC-Specific Requirements,,scanned page; conditional on DC
+NW-023,appointment,DC 6031 accepts deliveries Monday through Friday only.,delivery weekdays,Mon|Tue|Wed|Thu|Fri,,6,Appendix B DC-Specific Requirements,,scanned page; conditional on DC
 NW-024,routing_carrier,Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.,routing lead time,3,business days,3,6.1 Routing Requests,,no routing-request field in Shipment
 NW-025,routing_carrier,Parcel shipments must use UPS or FedEx Ground.,carrier,UPS|FedEx Ground,,4,6.2 Approved Carriers,3% of invoice value,table; conditional: parcel
 NW-026,routing_carrier,"LTL shipments must use XPO, Old Dominion, or Estes.",carrier,XPO|Old Dominion|Estes,,4,6.2 Approved Carriers,3% of invoice value,table; conditional: LTL

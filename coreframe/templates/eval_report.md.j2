@@ -1,0 +1,70 @@
+# Eval report
+
+**Gate: {{ "PASS" if not problems else "FAIL" }}**{% if problems %}
+
+{% for p in problems %}
+- {{ p }}
+{% endfor %}
+{% endif %}
+
+{% if provisional %}
+> **Provisional.** {{ provisional }}
+{% endif %}
+{% if skipped %}
+> Not evaluated: {{ skipped | join("; ") }}.
+{% endif %}
+
+## Metrics
+
+| Metric | Value | Threshold | |
+|---|---|---|---|
+{% for m in metric_rows %}
+| {{ m.label }} | {{ m.value }} | {{ m.threshold }} | {{ m.status }} |
+{% endfor %}
+
+Rule matches are proposed by `{{ matcher }}` and count only once a person confirms them in the matches CSV. Parameter accuracy requires both value and unit to be right. Citation accuracy requires the cited page to be right.
+{% if guides %}
+
+## By guide
+
+| Guide | Model / prompt | GT rules | Extracted | Recall | Precision | Param acc. | Citation acc. | Catch rate | False-positive rate | Needs-review rate | Checker labels |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+{% for g in guides %}
+| {{ g.name }} | {{ g.model }} / {{ g.prompt }} | {{ g.c.gt_rules }} | {{ g.c.extracted_rules }} | {{ g.m.recall | pct }} | {{ g.m.precision | pct }} | {{ g.m.parameter_accuracy | pct }} | {{ g.m.citation_accuracy | pct }} | {{ g.m.catch_rate | pct }} | {{ g.m.false_positive_rate | pct }} | {{ g.m.needs_review_rate | pct }} | {{ g.mode }} |
+{% endfor %}
+
+Checker labels: `end_to_end` means shipments and violation labels come from a hand-written reference rule set and are checked with the extracted rules, so extraction misses lower the catch rate. `self_consistency` means labels come from the extracted rules themselves.
+
+## By category
+
+| Category | GT rules | Recall | Precision | Param acc. | Citation acc. |
+|---|---|---|---|---|---|
+{% for name, c in categories %}
+| {{ name }} | {{ c.gt_rules }} | {{ c.metrics().recall | pct }} | {{ c.metrics().precision | pct }} | {{ c.metrics().parameter_accuracy | pct }} | {{ c.metrics().citation_accuracy | pct }} |
+{% endfor %}
+
+## Failure breakdown
+
+| Type | Count |
+|---|---|
+{% for t, n in by_type %}
+| {{ t }} | {{ n }} |
+{% endfor %}
+
+| Cause (tagged by hand) | Count |
+|---|---|
+{% for t, n in by_tag %}
+| {{ t }} | {{ n }} |
+{% endfor %}
+
+Tag each row's `failure_tag` in the failure-analysis CSVs ({{ failure_files | join(", ") }}). Allowed tags: {{ tags | join(", ") }}.
+
+## Worst misses
+
+{% for w in worst %}
+{{ loop.index }}. **{{ w.type }}** ({{ w.guide }}{% if w.gt_rule_id %}, {{ w.gt_rule_id }}{% endif %}): {{ w.detail }}. Source: p. {{ w.page }}, {{ w.section }}.{% if w.chargeback %} Chargeback: {{ w.chargeback }}.{% endif %}{% if w.failure_tag %} Cause: {{ w.failure_tag }}.{% endif %}
+
+{% else %}
+No misses.
+{% endfor %}
+{% endif %}

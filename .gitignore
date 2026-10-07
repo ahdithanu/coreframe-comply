@@ -4,6 +4,8 @@ data/*
 !data/sample/
 # regenerable with `coreframe synth` / `coreframe check`; keep only the demo report
 data/sample/synthetic/
+data/sample/runs/
+data/sample/chunks/
 data/sample/reports/*
 !data/sample/reports/DEMO-*
 !data/sample/reports/diff_*

@@ -88,7 +88,7 @@ RULES = [
     human("asn_edi", "For parcel shipments, the ASN must be transmitted within 60 minutes after carrier tender.",
           src(2, S22, "the ASN must be transmitted within 60 minutes after the parcel is tendered to the carrier"),
           "An 'after tender' window can't be expressed, and tender time isn't recorded.",
-          applies_to=PARCEL, chargeback=cb(250.0, "per_shipment", "$250 per shipment")),
+          parameters=[p("ASN max delay after tender", None, "lte", 60, "minutes")], applies_to=PARCEL, chargeback=cb(250.0, "per_shipment", "$250 per shipment")),
     checked("asn_edi", "Each carton in the ASN must carry an SSCC-18 matching its label.",
             [p("SSCC present", "cartons[].sscc_present", "eq", True)],
             src(2, S23, "Each carton listed in the ASN must be identified by a unique SSCC-18"),
@@ -130,7 +130,8 @@ RULES = [
           "Visual inspection only.", chargeback=CB_LABEL),
     human("labeling", "Each pallet must carry two labels, formatted per Section 4.1, on two adjacent sides.",
           src(3, S42, "Each pallet must carry two pallet labels, formatted as specified in Section 4.1"),
-          "Adjacency of label sides can't be expressed with the current operators."),
+          "Adjacency of label sides can't be expressed with the current operators.",
+          parameters=[p("pallet label count", None, "eq", 2)]),
     # NW-018 .. NW-022
     checked("pallet", "LTL and TL shipments must use 40 x 48 in GMA pallets.",
             [p("pallet footprint", "pallets[].footprint", "eq", "40x48", "in")],
@@ -155,11 +156,13 @@ RULES = [
     human("appointment", "DC 6031 accepts deliveries Monday through Friday only.",
           src(6, SB, "Deliveries are accepted Monday through Friday only."),
           "Day-of-week constraints can't be expressed with the current operators.",
+          parameters=[p("delivery weekdays", None, "in", ["Mon", "Tue", "Wed", "Thu", "Fri"])],
           applies_to=[{"field": "destination_dc", "operator": "eq", "value": "6031"}]),
     # NW-024 .. NW-027
     human("routing_carrier", "Shipments of 150 lbs or more must be routed via the Routing Portal at least 3 business days before ship date.",
           src(3, S61, "Shipments of 150 lbs or more must be routed through the Northwind Routing Portal"),
-          "Routing-request date isn't recorded on the shipment."),
+          "Routing-request date isn't recorded on the shipment.",
+          parameters=[p("routing lead time", None, "gte", 3, "business days")]),
     checked("routing_carrier", "Parcel shipments must use UPS or FedEx Ground.",
             [p("carrier", "shipment.carrier", "in", ["UPS", "FedEx Ground"])],
             src(4, S62, "Parcel UPS, FedEx Ground"), applies_to=PARCEL, chargeback=CB_CARRIER),
@@ -181,7 +184,8 @@ RULES = [
           parameters=[p("appointment request lead time", None, "gte", 48, "hours")]),
     human("appointment", "Carriers arriving more than 30 minutes after the appointment time will be refused.",
           src(4, S7, "Carriers arriving more than 30 minutes after the appointment time will be refused."),
-          "Arrival time isn't recorded.", applies_to=LTL_TL),
+          "Arrival time isn't recorded.", applies_to=LTL_TL,
+          parameters=[p("max late arrival", None, "lte", 30, "minutes")]),
     # NW-030 .. NW-033
     checked("documentation", "Each shipment must include a Bill of Lading referencing the Northwind PO number.",
             [p("BOL included", "shipment.documents", "in", ["BOL"])],
@@ -192,10 +196,12 @@ RULES = [
             src(4, S8, "and a packing list."), chargeback=CB_DOCS),
     human("documentation", "Shipments originating outside the United States require a commercial invoice.",
           src(4, S8, "A commercial invoice is required for shipments originating outside the United States."),
-          "Origin country isn't recorded on the shipment."),
+          "Origin country isn't recorded on the shipment.",
+          parameters=[p("commercial invoice included", "shipment.documents", "in", ["commercial_invoice"])]),
     human("chargeback_policy", "Repeat violations of the same type within 90 days are charged at 150% of the listed amount.",
           src(4, S9, "Repeat violations of the same type within a 90-day period are charged at 150% of the"),
-          "Needs chargeback history across shipments."),
+          "Needs chargeback history across shipments.",
+          parameters=[p("repeat multiplier", None, "eq", 150, "%")]),
 ]
 
 
