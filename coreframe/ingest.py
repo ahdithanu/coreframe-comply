@@ -118,18 +118,54 @@ def _body_font_size(doc: pymupdf.Document) -> float:
     return sizes.most_common(1)[0][0] if sizes else 10.0
 
 
-def _classify_heading(text: str, size: float, bold: bool, body: float) -> tuple[int, str] | None:
-    if len(text) > 100 or text.endswith((".", ",", ";")):
+SECTION_RE = re.compile(r"^section\s+\d+\b", re.IGNORECASE)
+TOC_LEADER_RE = re.compile(r"(\.{4,}|…{2,}|(\s\.){4,})")
+NOT_HEADING_RE = re.compile(r"^(note|notes|nb|example|e\.g\.)\b\W|\b[A-Z]{2}\s+\d{5}(-\d{4})?\b", re.IGNORECASE)
+WRAP_ENDINGS = (",", "–", "-", "&", " and", " of", " for")
+
+
+def _classify_heading(text: str, size: float, bold: bool, body: float) -> tuple[int, str | None] | None:
+    """(level, number) for a heading line, else None.
+
+    Numbered headings ("4.2 Title", "Section 4 Title", "Appendix B Title") keep their number
+    and level. Real guides also use unnumbered ones: ALL-CAPS or Title Case lines in bold at
+    body size (Academy, Foot Locker). Those are accepted when short, not sentence-like, and not
+    a table-of-contents line or an inline label ("Bin:")."""
+    if len(text) > 100 or text.endswith((".", ",", ";", ":")) or TOC_LEADER_RE.search(text):
         return None
     if not (bold or size >= body * 1.15):
         return None
     m = HEADING_RE.match(text)
-    if not m:
+    if m:
+        if m.group("app"):
+            return 1, m.group("app").title()
+        num = m.group("num")
+        level = 1 if SECTION_RE.match(text) else num.count(".") + 1
+        return level, num
+    letters = [c for c in text if c.isalpha()]
+    if len(letters) < 3 or len(text.split()) > 10 or text[0].islower():
         return None
-    if m.group("app"):
-        return 1, m.group("app").title()
-    num = m.group("num")
-    return num.count(".") + 1, num
+    if NOT_HEADING_RE.search(text):
+        return None  # "Note: ..." callouts, mailing addresses in label examples
+    caps = sum(c.isupper() for c in letters) / len(letters)
+    if caps < 0.8 and len(text.split()) < 2:
+        return None  # a lone Title-case word ("Date", "Page") is usually a table or form label
+    return (1 if size >= body * 1.15 else 2), None
+
+
+def _merge_wrapped_headings(lines: list[dict]) -> list[dict]:
+    """Join a bold line that ends mid-phrase ("Section 6 - Carton Packing,") with the bold line
+    that continues it, so a two-line heading is classified as one."""
+    out: list[dict] = []
+    for ln in lines:
+        prev = out[-1] if out else None
+        if (prev and prev["bold"] and ln["bold"] and abs(prev["size"] - ln["size"]) < 0.5
+                and prev["text"].rstrip().endswith(WRAP_ENDINGS) and len(prev["text"]) + len(ln["text"]) < 110):
+            prev["text"] = f"{prev['text'].rstrip()} {ln['text']}"
+            prev["bbox"] = prev["bbox"] | ln["bbox"]
+            continue
+        out.append(dict(ln))
+    return out
 
 
 def _open_edge_lines(page: pymupdf.Page) -> list[tuple[pymupdf.Point, pymupdf.Point]]:
@@ -218,20 +254,23 @@ def _parse_page(page: pymupdf.Page, running: set[str], body: float) -> tuple[lis
     for b in page.get_text("dict", sort=True)["blocks"]:
         if b.get("type") != 0:
             continue
+        lines = []
         for line in b["lines"]:
             spans = [s for s in line["spans"] if s["text"].strip()]
             if not spans:
                 continue
-            text = clean_text("".join(s["text"] for s in line["spans"]))
             bbox = pymupdf.Rect(line["bbox"])
             center = (bbox.tl + bbox.br) / 2
             if any(center in r for r in table_rects):
                 continue  # already captured as table rows
+            lines.append({"text": clean_text("".join(s["text"] for s in line["spans"])), "bbox": bbox,
+                          "size": max(s["size"] for s in spans),
+                          "bold": all(s["flags"] & 16 or "bold" in s["font"].lower() for s in spans)})
+        for ln in _merge_wrapped_headings(lines):
+            text, bbox, size, bold = ln["text"], ln["bbox"], ln["size"], ln["bold"]
             if _mask_digits(text) in running:
                 continue
             char_count += len(text)
-            size = max(s["size"] for s in spans)
-            bold = all(s["flags"] & 16 or "bold" in s["font"].lower() for s in spans)
             heading = _classify_heading(text, size, bold, body)
             if heading:
                 flush()

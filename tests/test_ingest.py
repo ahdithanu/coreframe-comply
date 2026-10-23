@@ -31,9 +31,42 @@ def test_running_header_and_footer_stripped(guide):
 
 
 def test_headings_detected_with_levels(guide):
-    heads = {b.number: b.level for p in guide.pages for b in p.blocks if b.kind == "heading"}
+    heads = {b.number: b.level for p in guide.pages for b in p.blocks if b.kind == "heading" and b.number}
     assert heads["3"] == 1 and heads["3.1"] == 2 and heads["Appendix A"] == 1
     assert len(heads) == 21  # 9 top-level + 11 subsections + Appendix A
+    unnumbered = [b.text for p in guide.pages for b in p.blocks if b.kind == "heading" and not b.number]
+    assert unnumbered == ["Vendor Routing & Compliance Guide", "Version 2025.1 — Effective March 1, 2025"]  # cover
+
+
+@pytest.mark.parametrize("text, size, bold, body, expected", [
+    ("EDI REQUIREMENTS", 12, True, 10, (1, None)),               # Academy: bold caps, larger than body
+    ("GS1 LABEL PLACEMENT", 10, True, 10, (2, None)),             # Academy: bold caps at body size
+    ("Section 6 – Carton Packing, Packaging, Labeling", 12, True, 12, (1, "6")),  # Foot Locker, after line merge
+    ("Requirements for Shoe Boxes", 12, True, 12, (2, None)),
+    ("FOOTWEAR", 12, True, 12, (2, None)),
+    ("Bin:", 12, True, 12, None),                                  # inline label
+    ("Date", 10, True, 10, None),                                  # lone title-case word: a table/form label
+    ("GS1-128 LABEL REQUIREMENTS…..………………31", 10, True, 10, None), # table-of-contents line
+    ("Hats and caps can easily be damaged when the appropriate packing procedures are not", 12, True, 12, None),
+    ("Packing and Packaging Guidelines", 12, False, 12, None),     # not bold, not larger
+    ("JUNCTION CITY, KS 66441", 12, True, 12, None),               # address inside a label example
+    ("Note: “Color” only necessary for apparel", 12, True, 12, None),
+])
+def test_heading_classifier_on_real_guide_styles(text, size, bold, body, expected):
+    from coreframe.ingest import _classify_heading
+    assert _classify_heading(text, size, bold, body) == expected
+
+
+def test_wrapped_heading_lines_are_joined():
+    import pymupdf
+    from coreframe.ingest import _merge_wrapped_headings
+    r = pymupdf.Rect(0, 0, 10, 10)
+    lines = [{"text": "Section 6 – Carton Packing,", "bbox": r, "size": 12, "bold": True},
+             {"text": "Packaging, Labeling, Shipping & Loading Requirements", "bbox": r, "size": 12, "bold": True},
+             {"text": "Packing and Packaging Guidelines", "bbox": r, "size": 12, "bold": True}]
+    out = _merge_wrapped_headings(lines)
+    assert [l["text"] for l in out] == ["Section 6 – Carton Packing, Packaging, Labeling, Shipping & Loading Requirements",
+                                        "Packing and Packaging Guidelines"]
 
 
 def test_every_chunk_has_pages(chunks):

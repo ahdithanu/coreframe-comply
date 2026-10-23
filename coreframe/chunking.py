@@ -98,6 +98,8 @@ def chunk_guide(guide: ParsedGuide) -> list[Chunk]:
             drafts.append(scan)
             continue
         for b in page.blocks:
+            if b.kind == "heading" and any(h == b.text for _, h in stack):
+                continue  # running section title repeated at the top of each page, not a new section
             if b.kind == "heading":
                 while stack and stack[-1][0] >= b.level:
                     stack.pop()

@@ -133,7 +133,7 @@ eval.py        eval + release gate          eval_config.yaml   thresholds
 
 ## Known limitations
 
-- **Ingestion** assumes a single text column, detects only tables drawn with ruling lines, and needs numbered headings ("4.2", "Section 4", "Appendix B"). Guides with unnumbered headings or borderless tables will chunk badly.
+- **Ingestion** assumes a single text column and detects only tables drawn with ruling lines. Headings come from typography: numbered ("4.2", "Section 4"), or short bold or larger lines (ALL-CAPS and two-line headings included). That was tuned on two real retailer guides; a guide that marks headings some other way (color only, for example) will chunk badly.
 - **The shipment schema is small.** Rules about fields it doesn't record (burst strength, arrival time, routing-request dates, origin country) can only be surfaced for review. On the sample, over a third of applicable rule checks come back as needs-review.
 - **Operators are limited** to eq, lte, gte, between, in, before and exists. "Within 60 minutes after tender", day-of-week windows and counts ("two labels on adjacent sides") can't be expressed yet.
 - **String values aren't mapped to a vocabulary.** "BOL" and "Bill of Lading" won't match. Real WMS data needs an alias table per customer.
